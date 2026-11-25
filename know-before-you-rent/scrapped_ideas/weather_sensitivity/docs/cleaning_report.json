@@ -1,0 +1,132 @@
+{
+  "reports": [
+    {
+      "dataset": "311",
+      "steps": [
+        {
+          "step": "load_raw",
+          "rows_before": 3016268,
+          "rows_after": 3016268,
+          "rows_removed": 0,
+          "detail": "8 complaint types"
+        },
+        {
+          "step": "drop_duplicate_keys",
+          "rows_before": 3016268,
+          "rows_after": 3016268,
+          "rows_removed": 0,
+          "detail": "duplicate unique_key"
+        },
+        {
+          "step": "parse_dates",
+          "rows_before": 3016268,
+          "rows_after": 3016268,
+          "rows_removed": 0,
+          "detail": "unparseable or out-of-window created_date"
+        },
+        {
+          "step": "standardize_text",
+          "rows_before": 3016268,
+          "rows_after": 3016268,
+          "rows_removed": 0,
+          "detail": "1,298 placeholder values set to missing",
+          "placeholders_replaced": 1298
+        },
+        {
+          "step": "clean_locations",
+          "rows_before": 3016268,
+          "rows_after": 3016268,
+          "rows_removed": 0,
+          "detail": "incident_zip: 3,015,157->3,015,114 valid, bbl: 2,832,823->2,832,396 valid, borough: 3,015,604->3,015,610 valid, latitude: 3,003,696->3,003,696 valid",
+          "valid_before": {
+            "incident_zip": 3015157,
+            "bbl": 2832823,
+            "borough": 3015604,
+            "latitude": 3003696
+          },
+          "valid_after": {
+            "incident_zip": 3015114,
+            "bbl": 2832396,
+            "borough": 3015610,
+            "latitude": 3003696
+          }
+        },
+        {
+          "step": "impute_zip_from_pluto",
+          "rows_before": 3016268,
+          "rows_after": 3016268,
+          "rows_removed": 0,
+          "detail": "148 ZIPs filled via BBL",
+          "zips_filled": 148
+        },
+        {
+          "step": "closure_features",
+          "rows_before": 3016268,
+          "rows_after": 3016268,
+          "rows_removed": 0,
+          "detail": "flag_closed_before_created=183, flag_zero_hour_close=102,266, flag_very_long_close=648",
+          "flag_closed_before_created": 183,
+          "flag_zero_hour_close": 102266,
+          "flag_very_long_close": 648
+        }
+      ]
+    },
+    {
+      "dataset": "pluto",
+      "steps": [
+        {
+          "step": "load_raw",
+          "rows_before": 858312,
+          "rows_after": 858312,
+          "rows_removed": 0,
+          "detail": ""
+        },
+        {
+          "step": "valid_unique_bbl",
+          "rows_before": 858312,
+          "rows_after": 858312,
+          "rows_removed": 0,
+          "detail": "invalid or duplicate BBL"
+        },
+        {
+          "step": "convert_types",
+          "rows_before": 858312,
+          "rows_after": 858312,
+          "rows_removed": 0,
+          "detail": "39,842 lots with yearbuilt=0 set to missing",
+          "unknown_yearbuilt": 39842
+        }
+      ]
+    },
+    {
+      "dataset": "weather",
+      "steps": [
+        {
+          "step": "validate_and_features",
+          "rows_before": 1096,
+          "rows_after": 1096,
+          "rows_removed": 0,
+          "detail": "0 missing days filled",
+          "missing_days": 0
+        }
+      ]
+    }
+  ],
+  "complaints_by_type": {
+    "Noise - Residential": 1141098,
+    "HEAT/HOT WATER": 810207,
+    "Noise - Street/Sidewalk": 483499,
+    "Water System": 195627,
+    "Dirty Condition": 169822,
+    "Rodent": 112786,
+    "Sewer": 81122,
+    "Snow or Ice": 22107
+  },
+  "missing_share_after_cleaning": {
+    "incident_zip": 0.0003,
+    "bbl": 0.061,
+    "borough": 0.0002,
+    "latitude": 0.0042,
+    "closed_date": 0.0035
+  }
+}
