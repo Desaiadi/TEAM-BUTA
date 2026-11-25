@@ -176,7 +176,7 @@ def _write_parquet_atomic(df: pd.DataFrame, path) -> None:
 
 def _download_dataset_month(name: str, month: pd.Timestamp, force: bool) -> tuple[str, int]:
     """Download one month of a dated housing dataset unless cached."""
-    dataset_id, columns, date_col = config.HOUSING_DATASETS[name]
+    dataset_id, columns, date_col = config.HOUSING_DATASETS[name][:3]
     path = config.RAW_DIR / name / f"{month:%Y-%m}.parquet"
     if path.exists() and not force:
         return f"{name} {month:%Y-%m} (cached)", 0
@@ -200,9 +200,11 @@ def download_housing(force: bool = False, only: list[str] | None = None) -> None
     current = pd.Timestamp.today().normalize().replace(day=1)
     jobs = []
     for name in names:
-        dataset_id, columns, date_col = config.HOUSING_DATASETS[name]
+        spec = config.HOUSING_DATASETS[name]
+        dataset_id, columns, date_col = spec[:3]
+        start = spec[3] if len(spec) > 3 else config.HOUSING_START_DATE
         if date_col:
-            jobs += [(name, m) for m in _month_starts(config.HOUSING_START_DATE, pd.Timestamp.today().normalize())]
+            jobs += [(name, m) for m in _month_starts(start, pd.Timestamp.today().normalize())]
             continue
         path = config.RAW_DIR / f"{name}.parquet"
         if path.exists() and not force:

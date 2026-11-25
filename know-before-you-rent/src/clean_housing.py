@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 
 CLEAN_DIR = config.PROCESSED_DIR
 OUT = {name: CLEAN_DIR / f"{name}_clean.parquet"
-       for name in ("hpd_complaints", "hpd_violations", "bedbugs", "evictions", "landlords")}
+       for name in ("hpd_complaints", "hpd_violations", "bedbugs", "evictions", "landlords", "crime")}
 
 # --------------------------------------------------------------------------
 # One vocabulary of renter-facing problem types, shared by complaints and violations
@@ -196,6 +196,51 @@ def clean_evictions(raw: pd.DataFrame, rep: CleaningReport) -> pd.DataFrame:
 
 
 # --------------------------------------------------------------------------
+# Crime (NYPD complaints)
+# --------------------------------------------------------------------------
+CRIME_GROUPS = {   # first match wins; applied to the offense description
+    "violent": r"MURDER|HOMICIDE|RAPE|SEX CRIME|ROBBERY|FELONY ASSAULT|ASSAULT 3|KIDNAPPING|STRANGULATION",
+    "property": r"BURGLARY|LARCENY|THEFT|STOLEN|CRIMINAL MISCHIEF|ARSON|FRAUD|FORGERY|POSSESSION OF STOLEN",
+    "drugs/weapons": r"DANGEROUS DRUGS|DANGEROUS WEAPONS|CANNABIS|MARIJUANA",
+    "harassment": r"HARR?ASS?MENT|MENACING|OFF\. AGNST PUB ORD",
+}
+
+
+def crime_group(offense: pd.Series) -> pd.Series:
+    """Map NYPD offense descriptions onto a few groups (violent, property, drugs/weapons, harassment, other)."""
+    t = offense.astype("string").str.upper()
+    out = pd.Series("other", index=t.index, dtype="string")
+    done = pd.Series(False, index=t.index)
+    for group, pattern in CRIME_GROUPS.items():
+        hit = t.str.contains(pattern, regex=True, na=False) & ~done
+        out[hit], done = group, done | hit
+    return out
+
+
+def clean_crime(raw: pd.DataFrame, rep: CleaningReport) -> pd.DataFrame:
+    """Reported crimes since 2022 with valid NYC coordinates, grouped by severity and type."""
+    df = _start(raw, rep, "historic + current year")
+    df = _dedupe(df, "cmplnt_num", rep)
+    df = _parse_dates(df, ["rpt_dt"], "rpt_dt", rep)
+    n = len(df)
+    df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
+    df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
+    b = config.NYC_BBOX
+    df = df[df["latitude"].between(b["lat_min"], b["lat_max"]) & df["longitude"].between(b["lon_min"], b["lon_max"])]
+    rep.add("valid_coordinates", n, len(df), "missing, zero or outside-NYC coordinates")
+
+    n = len(df)
+    df["severity"] = df["law_cat_cd"].astype("string").str.upper().str.strip()
+    df["crime_group"] = crime_group(df["ofns_desc"])
+    df["in_residence"] = df["prem_typ_desc"].astype("string").str.upper().str.contains("RESIDENCE", na=False)
+    df["year"] = df["rpt_dt"].dt.year.astype("int16")
+    rep.add("derive_fields", n, len(df), "severity, crime group (regex), in-residence flag",
+            groups=df["crime_group"].value_counts().to_dict())
+    return df[["cmplnt_num", "rpt_dt", "year", "ofns_desc", "severity", "crime_group", "in_residence",
+               "latitude", "longitude"]].reset_index(drop=True)
+
+
+# --------------------------------------------------------------------------
 # Landlords: registrations + contacts -> one landlord (portfolio) per building
 # --------------------------------------------------------------------------
 KEY_PRIORITY = ["AGENT_CO", "AGENT_P", "OWNER_ADDR"]
@@ -280,6 +325,8 @@ def clean_all() -> None:
         "bedbugs": lambda r: clean_bedbugs(H.load("bedbugs"), r),
         "evictions": lambda r: clean_evictions(H.load("evictions"), r),
         "landlords": lambda r: clean_landlords(H.load("hpd_registrations"), H.load("hpd_contacts"), r),
+        "crime": lambda r: clean_crime(pd.concat([H.load("crime_historic"), H.load("crime_current")],
+                                                 ignore_index=True), r),
     }
     for name, job in jobs.items():
         rep = CleaningReport(name)

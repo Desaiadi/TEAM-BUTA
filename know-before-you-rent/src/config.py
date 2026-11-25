@@ -73,7 +73,7 @@ COLUMNS_311 = [
 
 COLUMNS_PLUTO = [
     "bbl", "borough", "zipcode", "cd", "yearbuilt", "unitsres", "unitstotal",
-    "numfloors", "bldgclass", "landuse", "latitude", "longitude",
+    "numfloors", "bldgclass", "landuse", "latitude", "longitude", "address",
 ]
 
 # --------------------------------------------------------------------------
@@ -100,7 +100,11 @@ WEATHER_DAILY_VARS = [
 # --------------------------------------------------------------------------
 HOUSING_START_DATE = "2022-01-01"   # dated datasets are downloaded from here to today
 
-# name -> (dataset id, columns or None for all, date column to chunk by month or None)
+CRIME_COLUMNS = [   # NYPD complaints; demographic columns are deliberately not downloaded
+    "cmplnt_num", "cmplnt_fr_dt", "rpt_dt", "ky_cd", "ofns_desc", "law_cat_cd", "crm_atpt_cptd_cd",
+    "boro_nm", "addr_pct_cd", "loc_of_occur_desc", "prem_typ_desc", "latitude", "longitude"]
+
+# name -> (dataset id, columns or None for all, date column to chunk by month or None[, start date])
 HOUSING_DATASETS = {
     "hpd_complaints": ("ygpa-z7cr", [
         "received_date", "problem_id", "complaint_id", "building_id", "bbl", "bin", "borough", "post_code",
@@ -116,6 +120,8 @@ HOUSING_DATASETS = {
     "hpd_contacts": ("feu5-w2e2", None, None),
     "bedbugs": ("wz6d-d3jb", None, None),
     "evictions": ("6z8x-wfk4", None, None),
+    "crime_historic": ("qgea-i56i", CRIME_COLUMNS, "rpt_dt"),             # NYPD reported crimes, 2006 → last year
+    "crime_current": ("5uac-w243", CRIME_COLUMNS, "rpt_dt", "2026-01-01"),   # current year only
 }
 
 # Socrata paging. An optional app token (free, from data.cityofnewyork.us)
