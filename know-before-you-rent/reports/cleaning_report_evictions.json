@@ -1,0 +1,40 @@
+{
+  "dataset": "evictions",
+  "steps": [
+    {
+      "step": "load_raw",
+      "rows_before": 137724,
+      "rows_after": 137724,
+      "rows_removed": 0,
+      "detail": ""
+    },
+    {
+      "step": "residential_only",
+      "rows_before": 137724,
+      "rows_after": 125344,
+      "rows_removed": 12380,
+      "detail": "commercial evictions removed"
+    },
+    {
+      "step": "parse_dates",
+      "rows_before": 125344,
+      "rows_after": 64293,
+      "rows_removed": 61051,
+      "detail": "missing or pre-2022 executed_date"
+    },
+    {
+      "step": "valid_bbl",
+      "rows_before": 64293,
+      "rows_after": 60319,
+      "rows_removed": 3974,
+      "detail": "missing or invalid BBL"
+    },
+    {
+      "step": "drop_duplicates",
+      "rows_before": 60319,
+      "rows_after": 60306,
+      "rows_removed": 13,
+      "detail": "same case, docket, building and date"
+    }
+  ]
+}

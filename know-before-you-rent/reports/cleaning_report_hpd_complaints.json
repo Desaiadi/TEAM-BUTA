@@ -1,0 +1,52 @@
+{
+  "dataset": "hpd_complaints",
+  "steps": [
+    {
+      "step": "load_raw",
+      "rows_before": 4032908,
+      "rows_after": 4032908,
+      "rows_removed": 0,
+      "detail": "2,448,291 complaints"
+    },
+    {
+      "step": "drop_duplicate_problem_id",
+      "rows_before": 4032908,
+      "rows_after": 4032908,
+      "rows_removed": 0,
+      "detail": ""
+    },
+    {
+      "step": "parse_dates",
+      "rows_before": 4032908,
+      "rows_after": 4032908,
+      "rows_removed": 0,
+      "detail": "missing or pre-2022 received_date"
+    },
+    {
+      "step": "valid_bbl",
+      "rows_before": 4032908,
+      "rows_after": 4019416,
+      "rows_removed": 13492,
+      "detail": "missing or invalid BBL"
+    },
+    {
+      "step": "derive_fields",
+      "rows_before": 4019416,
+      "rows_after": 4019416,
+      "rows_removed": 0,
+      "detail": "problem_type, emergency, duplicate, building-wide, open flags",
+      "problem_types": {
+        "heat/hot water": 1358045,
+        "other": 490539,
+        "leaks/mold": 415456,
+        "plumbing": 385863,
+        "pests": 360258,
+        "paint/plaster": 353184,
+        "doors/windows": 275608,
+        "electric": 164517,
+        "sanitation": 114010,
+        "safety": 101936
+      }
+    }
+  ]
+}

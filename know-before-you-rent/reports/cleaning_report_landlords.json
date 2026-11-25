@@ -1,0 +1,27 @@
+{
+  "dataset": "landlords",
+  "steps": [
+    {
+      "step": "load_raw",
+      "rows_before": 187127,
+      "rows_after": 187127,
+      "rows_removed": 0,
+      "detail": "744,753 contacts"
+    },
+    {
+      "step": "latest_registration_per_bbl",
+      "rows_before": 187127,
+      "rows_after": 176715,
+      "rows_removed": 10412,
+      "detail": "older registrations of the same building"
+    },
+    {
+      "step": "build_portfolios",
+      "rows_before": 176715,
+      "rows_after": 173329,
+      "rows_removed": 3386,
+      "detail": "116,519 landlords",
+      "largest_portfolio": 522
+    }
+  ]
+}

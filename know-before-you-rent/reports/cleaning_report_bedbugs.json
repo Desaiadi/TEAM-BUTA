@@ -1,0 +1,33 @@
+{
+  "dataset": "bedbugs",
+  "steps": [
+    {
+      "step": "load_raw",
+      "rows_before": 727059,
+      "rows_after": 727059,
+      "rows_removed": 0,
+      "detail": ""
+    },
+    {
+      "step": "valid_bbl",
+      "rows_before": 727059,
+      "rows_after": 726357,
+      "rows_removed": 702,
+      "detail": "missing or invalid BBL"
+    },
+    {
+      "step": "drop_impossible",
+      "rows_before": 726357,
+      "rows_after": 726180,
+      "rows_removed": 177,
+      "detail": "infested > units, negative counts, no period or units"
+    },
+    {
+      "step": "one_filing_per_building_year",
+      "rows_before": 726180,
+      "rows_after": 618126,
+      "rows_removed": 108054,
+      "detail": ""
+    }
+  ]
+}
