@@ -5,12 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Know Before You Rent{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='charts.js') }}"></script>
   {% block head %}{% endblock %}
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="{{ url_for('index') }}">Know Before You Rent</a>
-    <span class="tag">NYC · Team BUTA · DS-GA 1007</span>
+    <nav>
+      <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint in ('index', 'search_page', 'building') }}">Search</a>
+      <a href="{{ url_for('insights') }}" class="{{ 'active' if request.endpoint == 'insights' }}">Data &amp; model insights</a>
+    </nav>
   </header>
   <main>{% block content %}{% endblock %}</main>
   <footer>

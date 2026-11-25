@@ -57,3 +57,33 @@ tr.worse td:nth-child(2) { color: var(--high); font-weight: 700; }
 .crime-row div { display: flex; flex-direction: column; } .crime-row strong { font-size: 1.5rem; }
 
 @media (max-width: 800px) { .building-head, .two-col { grid-template-columns: 1fr; } .hero h1 { font-size: 1.8rem; } }
+
+/* ---- navigation */
+.topbar nav { margin-left: auto; display: flex; gap: 6px; }
+.topbar nav a { color: #fff; opacity: .8; text-decoration: none; padding: 6px 12px; border-radius: 8px; font-size: .95rem; }
+.topbar nav a:hover, .topbar nav a.active { opacity: 1; background: rgba(255,255,255,.16); }
+.jump { display: flex; gap: 10px; margin-top: 12px; }
+.jump a { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; text-decoration: none; font-size: .9rem; }
+
+/* ---- charts */
+.chart { position: relative; width: 100%; }
+.chart canvas { display: block; }
+.card .chart { margin-top: 8px; }
+.table-view { margin-top: 8px; font-size: .85rem; }
+.table-view summary { cursor: pointer; color: var(--violet); }
+.table-scroll { overflow-x: auto; max-height: 280px; overflow-y: auto; }
+.table-view table td, .table-view table th { white-space: nowrap; }
+.chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.chart-head select { margin-left: 8px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; }
+.section-title { margin: 40px 0 4px; font-size: 1.5rem; scroll-margin-top: 16px; }
+
+/* ---- KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 8px 0 16px; }
+.kpi { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; }
+.kpi strong { font-size: 1.7rem; color: var(--violet); }
+.kpi span { color: var(--muted); font-size: .9rem; }
+.two-col > .card { margin: 0; }
+.two-col { margin: 16px 0; }
+table.datasets td:last-child, table.datasets th:last-child { text-align: left; padding-left: 24px; }
+.table-view table td, .table-view table th { text-align: right; }
+.table-view table td:first-child, .table-view table th:first-child { text-align: left; }

@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT))
 from src import address, report                           # noqa: E402
 from src.app_data import ADDRESS_FILE, APP_FILE, BASE_RATES_FILE   # noqa: E402
 from src.features_housing import TARGET_TYPES, slug        # noqa: E402
+from src.insights import HISTORY_FILE, INSIGHTS_FILE       # noqa: E402
 
 app = Flask(__name__)
 
@@ -41,6 +42,31 @@ CITY = {
     "ll_rate": {t: BUILDINGS[f"c_{slug(t)}"].sum() / units * 100 for t in TARGET_TYPES},
     "crime": {c[6:]: float(BUILDINGS[c].median()) for c in BUILDINGS.columns if c.startswith("crime_")},
 }
+# Chart data (built by `python -m src.insights`)
+INSIGHTS = json.loads(INSIGHTS_FILE.read_text())
+HISTORY = pd.read_parquet(HISTORY_FILE).set_index("bbl")
+HISTORY_YEARS = sorted(HISTORY["year"].unique().tolist())
+
+
+def building_charts(bbl: str, data: dict) -> dict:
+    """Series for the building page's charts, as plain lists."""
+    h = HISTORY.loc[[bbl]] if bbl in HISTORY.index else HISTORY.iloc[0:0]
+    table = h.pivot_table(index="year", columns="series", values="n", aggfunc="sum").reindex(HISTORY_YEARS).fillna(0)
+    col = lambda name: [int(x) for x in table[name]] if name in table else [0] * len(HISTORY_YEARS)
+    return {
+        "years": [str(y) + ("*" if y == HISTORY_YEARS[-1] else "") for y in HISTORY_YEARS],
+        "complaints": {t: col(t) for t in TARGET_TYPES},
+        "violations": {k: col(f"class {k}") for k in "ABC"},
+        "risk": {"labels": [r["label"].split(" (")[0] for r in data["risks"]],
+                 "building": [r["prob"] for r in data["risks"]],
+                 "typical": [BASE_RATES[r["type"]] for r in data["risks"]]},
+        "landlord": {"labels": [r["label"].split(" (")[0] for r in data["landlord_rates"]],
+                     "landlord": [None if pd.isna(r["landlord"]) else float(r["landlord"]) for r in data["landlord_rates"]],
+                     "city": [float(r["city"]) for r in data["landlord_rates"]]},
+        "crime": {"labels": list(data["crime"]),
+                  "here": [float(v["here"]) for v in data["crime"].values()],
+                  "city": [float(v["city"]) for v in data["crime"].values()]},
+    }
 
 
 # ---------------------------------------------------------------- pages
@@ -68,7 +94,13 @@ def building(bbl: str):
         same = same.iloc[0:0]
     others = [{"lat": r.latitude, "lon": r.longitude, "address": r.address, "bbl": r.bbl,
                "risk": float(r.overall_risk)} for r in same.itertuples()]
-    return render_template("building.html", b=data, others=others)
+    return render_template("building.html", b=data, others=others, charts=building_charts(bbl, data),
+                           type_order=TARGET_TYPES)
+
+
+@app.get("/insights")
+def insights():
+    return render_template("insights.html", ins=INSIGHTS, type_order=TARGET_TYPES)
 
 
 # ---------------------------------------------------------------- API

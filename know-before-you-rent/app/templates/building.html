@@ -33,6 +33,25 @@
   <p class="muted small">Chance of at least one tenant complaint of that type in the next 12 months. The model was trained on 2023–24 history and checked on 2025 outcomes (AUC 0.89–0.93).</p>
 </section>
 
+<section class="card">
+  <h2>This building vs a typical building</h2>
+  <p class="muted small">Predicted chance of each problem next year, against the share of all apartment buildings that had it in 2025.</p>
+  <div class="chart" style="height:300px"><canvas id="riskChart" role="img" aria-label="Predicted chance of each problem for this building versus a typical building"></canvas></div>
+</section>
+
+<section class="two-col">
+  <div class="card">
+    <h2>Complaint history</h2>
+    <p class="muted small">Tenant complaints to HPD per year, by problem type. *{{ charts.years[-1][:-1] }} is the year so far.</p>
+    <div class="chart" style="height:300px"><canvas id="historyChart" role="img" aria-label="Complaints per year by problem type"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Violations issued</h2>
+    <p class="muted small">Violations inspectors confirmed per year, by severity: A non-hazardous, B hazardous, C immediately hazardous.</p>
+    <div class="chart" style="height:300px"><canvas id="violationChart" role="img" aria-label="Violations per year by class"></canvas></div>
+  </div>
+</section>
+
 <section class="two-col">
   <div class="card">
     <h2>Red flags right now</h2>
@@ -43,14 +62,8 @@
   <div class="card">
     <h2>The landlord's other buildings</h2>
     {% if b.portfolio > 1 %}
-    <table>
-      <tr><th>Complaints per 100 apartments</th><th>Landlord</th><th>NYC</th></tr>
-      {% for r in b.landlord_rates %}
-      <tr class="{{ 'worse' if r.landlord is not none and r.landlord == r.landlord and r.landlord > 1.5 * r.city }}">
-        <td>{{ r.label }}</td><td>{{ r.landlord|num(1) }}</td><td>{{ r.city|num(1) }}</td></tr>
-      {% endfor %}
-    </table>
-    <p class="muted small">Neighboring buildings with the same landlord share problems about 3× more often than neighbors with different landlords.</p>
+    <p class="muted small">Complaints per 100 apartments over the last 2 years, in the landlord's other buildings vs all NYC apartment buildings.</p>
+    <div class="chart" style="height:300px"><canvas id="landlordChart" role="img" aria-label="Landlord's complaint rates versus NYC by problem type"></canvas></div>
     {% else %}<p class="muted">This landlord has no other registered buildings to compare.</p>{% endif %}
   </div>
 </section>
@@ -58,11 +71,7 @@
 {% if b.crime %}
 <section class="card">
   <h2>Reported crime within 200 m <span class="muted small">(per year, 2025–26)</span></h2>
-  <div class="crime-row">
-    {% for k, v in b.crime.items() %}
-    <div><strong>{{ v.here|num }}</strong><span>{{ k }}</span><span class="muted small">NYC median building: {{ v.city|num }}</span></div>
-    {% endfor %}
-  </div>
+  <div class="chart" style="height:220px"><canvas id="crimeChart" role="img" aria-label="Reported crime near this building versus the median NYC building"></canvas></div>
   <p class="muted small">Crimes reported to the NYPD, located at the nearest street segment. Reporting also reflects policing patterns; shown as context only.</p>
 </section>
 {% endif %}
@@ -82,5 +91,33 @@ others.forEach(o => L.circleMarker([o.lat, o.lon], {radius: 5, color: "#fff", we
   fillColor: o.risk > 0.3 ? "#c0392b" : "#9aa0a6", fillOpacity: 0.9})
   .addTo(map).bindPopup(`<a href="/building/${o.bbl}">${o.address}</a><br>same landlord`));
 if (others.length) map.fitBounds(L.latLngBounds([here, ...others.map(o => [o.lat, o.lon])]).pad(0.1), {maxZoom: 16});
+
+const C = {{ charts|tojson }};
+const TYPES = {{ type_order|tojson }};
+
+kbyrChart("riskChart", "bar", C.risk.labels, [
+  {label: "This building", data: C.risk.building, color: KBYR.violet},
+  {label: "Typical building", data: C.risk.typical, color: KBYR.grey},
+], {horizontal: true, format: "pct", yMax: 1, labelHeader: "Problem"});
+
+kbyrChart("historyChart", "bar", C.years,
+  TYPES.map(t => ({label: t, data: C.complaints[t], color: KBYR.typeColors[t]})),
+  {stacked: true, format: "int", labelHeader: "Year"});
+
+kbyrChart("violationChart", "bar", C.years, [
+  {label: "Class A", data: C.violations.A, color: KBYR.ordinal[0]},
+  {label: "Class B", data: C.violations.B, color: KBYR.ordinal[1]},
+  {label: "Class C", data: C.violations.C, color: KBYR.ordinal[2]},
+], {stacked: true, format: "int", labelHeader: "Year"});
+
+kbyrChart("landlordChart", "bar", C.landlord.labels, [
+  {label: "Landlord's other buildings", data: C.landlord.landlord, color: KBYR.violet},
+  {label: "All NYC buildings", data: C.landlord.city, color: KBYR.grey},
+], {horizontal: true, format: "one", labelHeader: "Problem"});
+
+kbyrChart("crimeChart", "bar", C.crime.labels, [
+  {label: "Within 200 m of this building", data: C.crime.here, color: KBYR.violet},
+  {label: "Median NYC building", data: C.crime.city, color: KBYR.grey},
+], {horizontal: true, format: "int", labelHeader: "Crimes per year"});
 </script>
 {% endblock %}
