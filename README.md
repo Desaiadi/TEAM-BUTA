@@ -74,7 +74,7 @@ Covering 172,546 NYC apartment buildings (3+ units), January 2022 to November 20
 
 **Why training is fast.** The heavy work, downloading and cleaning ~37M records and building features, happens once beforehand. The model sees a compact table of 172,546 rows × 54 numbers. Histogram-based boosting bins each feature into 255 buckets and uses all CPU cores, so each model trains in 2–4 seconds. All 14 train in about a minute on a laptop; no GPU is needed.
 
-**For the app:** the models are retrained on the 2025 table and score every building from its 2025–26 history (`python -m src.app_data`). Code: `src/model_housing.py`, `src/features_housing.py`; walkthrough in `notebooks/10_model.ipynb`.
+**For the app:** the models are retrained on the 2025 table and score every building from its 2025–26 history (`python -m src.app_data`). Code: `src/model_housing.py`, `src/features_housing.py`; walkthrough in `notebooks/11_model.ipynb`.
 
 ## The product
 A Flask web app. Type an NYC address and get the building's report:
@@ -102,10 +102,10 @@ A **Data & model insights** page charts the datasets, the findings and the model
 |---|---|
 | `01`–`04` | Explore HPD complaints, violations, landlords, bedbugs and evictions |
 | `05`–`08` | Clean each dataset, build landlord portfolios, clean PLUTO |
-| `09` | Build the building feature tables; first answers to the questions |
-| `10` | Train and evaluate the models |
-| `11` | Do same-landlord neighbors share problems? (the 100-meter question) |
-| `12` | Explore and clean NYPD crime data |
+| `09` | Explore and clean NYPD crime data |
+| `10` | Build the building feature tables; first answers to the questions |
+| `11` | Train and evaluate the models |
+| `12` | Do same-landlord neighbors share problems? (the 100-meter question) |
 
 | Module (`src/`) | Role |
 |---|---|

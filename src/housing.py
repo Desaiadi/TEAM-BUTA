@@ -47,6 +47,21 @@ def load(name: str, columns: list[str] | None = None) -> pd.DataFrame:
     return pd.concat(parts, ignore_index=True)
 
 
+def clean_pluto_table() -> pd.DataFrame:
+    """Cleaned PLUTO, created on first use.
+
+    The exploration notebooks (01-04) need clean building data before the
+    cleaning notebooks run, so PLUTO is cleaned and cached here the first
+    time anyone asks for it. Notebook 08 shows the same cleaning step by step.
+    """
+    if not config.CLEAN_PLUTO_FILE.exists():
+        from src.preprocess import clean_pluto
+        pluto, _ = clean_pluto()
+        config.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+        pluto.to_parquet(config.CLEAN_PLUTO_FILE, index=False)
+    return pd.read_parquet(config.CLEAN_PLUTO_FILE)
+
+
 def monthly_rows(name: str) -> pd.Series:
     """Rows per month from parquet metadata (instant, loads no data)."""
     return pd.Series({f.stem: pq.ParquetFile(f).metadata.num_rows for f in dataset_files(name)}, name="rows")
