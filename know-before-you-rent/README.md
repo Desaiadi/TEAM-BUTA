@@ -59,4 +59,16 @@ pip install -r requirements.txt
 python -m src.download --only pluto
 python -m src.download --only housing
 ```
-Then run `notebooks/rent_01` → `rent_10` in order, with VS Code's kernel set to `.venv`. Data goes to `data/` and models to `models/`; neither is committed.
+Then run `notebooks/rent_01` → `rent_12` in order, with VS Code's kernel set to `.venv`. Data goes to `data/` and models to `models/`; neither is committed.
+
+## Demo app
+```bash
+python -m src.app_data      # scores every building once (~2 min)
+python app/app.py           # open http://127.0.0.1:5050
+```
+Type an address to see the building's report:
+- Predicted problems for next year, each with a risk level and the top reasons.
+- Red flags: open class C violations, lead, bedbugs, evictions.
+- How the landlord's other buildings compare to NYC.
+- Reported crime within 200 m.
+- A map of the landlord's nearby buildings.
