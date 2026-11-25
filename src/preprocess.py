@@ -1,4 +1,4 @@
-"""Clean the raw 311, PLUTO and weather data.
+"""Shared cleaning helpers, PLUTO cleaning and 311 cleaning.
 
 Every cleaning step is a small documented function. A `CleaningReport`
 records how many rows and values each step touched, and the totals are
@@ -195,7 +195,7 @@ def add_closure_features(df: pd.DataFrame, rep: CleaningReport) -> pd.DataFrame:
 
 
 def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Calendar features used for joining to weather and for EDA."""
+    """Calendar features for EDA and time-based joins."""
     ts = df["created_date"]
     df["date"] = ts.dt.normalize()
     df["year"] = ts.dt.year.astype("int16")
@@ -256,59 +256,19 @@ def clean_pluto() -> tuple[pd.DataFrame, CleaningReport]:
 
 
 # --------------------------------------------------------------------------
-# Weather
-# --------------------------------------------------------------------------
-def clean_weather() -> tuple[pd.DataFrame, CleaningReport]:
-    """Rename columns, validate the daily series and derive weather features."""
-    rep = CleaningReport("weather")
-    df = pd.read_csv(config.RAW_WEATHER_FILE)
-    n = len(df)
-    df = df.rename(columns={
-        "time": "date", "temperature_2m_max": "tmax", "temperature_2m_min": "tmin",
-        "temperature_2m_mean": "tmean", "precipitation_sum": "precip", "rain_sum": "rain",
-        "snowfall_sum": "snow", "wind_speed_10m_max": "wind_max",
-    })
-    df["date"] = pd.to_datetime(df["date"])
-
-    expected = pd.date_range(config.START_DATE, config.END_DATE, freq="D")
-    gaps = expected.difference(df["date"])
-    if len(gaps):
-        log.warning("Weather is missing %d days; interpolating", len(gaps))
-    df = df.set_index("date").reindex(expected).rename_axis("date")
-    df = df.interpolate(limit=3).reset_index()
-    bad = int((df["tmin"] > df["tmax"]).sum())
-    if bad:
-        raise ValueError(f"{bad} weather days have tmin > tmax")
-
-    # Features: heating degree days, lags, rolling means, event flags.
-    df["hdd"] = (65 - df["tmean"]).clip(lower=0)
-    for lag in (1, 2):
-        df[f"tmin_lag{lag}"] = df["tmin"].shift(lag)
-        df[f"precip_lag{lag}"] = df["precip"].shift(lag)
-    df["tmin_3day_mean"] = df["tmin"].rolling(3, min_periods=1).mean()
-    df["temp_drop_24h"] = df["tmin"].shift(1) - df["tmin"]          # positive = got colder
-    df["heavy_rain"] = df["precip"] >= config.HEAVY_RAIN_INCHES
-    df["snow_day"] = df["snow"] > 0
-    rep.add("validate_and_features", n, len(df), f"{len(gaps)} missing days filled", missing_days=len(gaps))
-    return df, rep
-
-
-# --------------------------------------------------------------------------
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
     config.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     config.REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    weather, rep_w = clean_weather()
     pluto, rep_p = clean_pluto()
     complaints, rep_c = clean_311(pluto)
 
-    weather.to_parquet(config.CLEAN_WEATHER_FILE, index=False)
     pluto.to_parquet(config.CLEAN_PLUTO_FILE, index=False)
     complaints.to_parquet(config.CLEAN_311_FILE, index=False)
 
     summary = {
-        "reports": [r.to_dict() for r in (rep_c, rep_p, rep_w)],
+        "reports": [r.to_dict() for r in (rep_c, rep_p)],
         "complaints_by_type": complaints["complaint_type"].value_counts().to_dict(),
         "missing_share_after_cleaning": complaints[["incident_zip", "bbl", "borough", "latitude", "closed_date"]]
         .isna().mean().round(4).to_dict(),

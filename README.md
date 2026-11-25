@@ -6,9 +6,9 @@
 
 City and borough averages hide sharp local differences: two apartment buildings 100 meters apart can have very different heat, pest, leak and safety problems. This project measures those gaps using NYC open data, explains them, and turns them into a prediction a renter can use before signing a lease.
 
-📄 **[Read the project report (PDF)](docs/Project_Report.pdf)**
+📄 **[Read the project report (PDF)](docs/Project_Report.pdf)** · [What we found](#what-we-found) · [The model](#the-model) · [The product](#the-product) · [Run it](#run-it) · [Data](#data)
 
-![Building report in the Know Before You Rent web app](docs/screenshots/demo_building_report.png)
+<p align="center"><img src="docs/screenshots/demo_building_report.png" alt="Building report in the Know Before You Rent web app" width="620"></p>
 
 ## What we found
 Covering 172,546 NYC apartment buildings (3+ units), January 2022 to November 2026:
@@ -94,7 +94,6 @@ A **Data & model insights** page charts the datasets, the findings and the model
 ├── app/            Flask web app (templates, charts, styles)
 ├── reports/        Cleaning audit reports, model results, figures
 ├── docs/           Project report, screenshots, original proposal and brief
-├── archive/        An earlier direction we explored (weather sensitivity of 311 complaints)
 ├── data/           Downloaded and processed data (created locally, not committed)
 └── models/         Trained models (created locally, not committed)
 ```
@@ -116,7 +115,7 @@ A **Data & model insights** page charts the datasets, the findings and the model
 | `model_housing.py`, `insights.py` | Models, ablation, importance, calibration, risk levels, chart data |
 | `landlord_neighbors.py` | Same- vs different-landlord neighbor pairs with bootstrap intervals |
 | `address.py`, `report.py`, `app_data.py` | Address normalization and search, renter reports, precomputed app data |
-| `transform.py`, `plots.py` | Streaming the full 311 table; shared plotting helpers |
+| `transform.py`, `plots.py` | Streaming the full 311 table month by month; shared plotting style |
 
 ## Run it
 ```bash
@@ -144,7 +143,7 @@ All public [NYC Open Data](https://opendata.cityofnewyork.us/), linked by **BBL*
 | Bedbug Reporting (`wz6d-d3jb`) | 727k filings | Yearly infested apartments per building |
 | Evictions (`6z8x-wfk4`) | 60k residential | Executed evictions by building |
 | NYPD Complaints (`qgea-i56i`, `5uac-w243`) | 2.67M | Reported crime within 200 m (no demographic fields used) |
-| 311 Service Requests (`erm2-nwe9`) | 23.3M | Full history; profiled, and used in the archived analysis |
+| 311 Service Requests (`erm2-nwe9`) | 23.3M | Full history since 2020; downloaded for the city response-time model (in progress) |
 
 ## Roadmap
 - **City response times (in progress):** a model of how long NYC 311 service requests take to close, by request type and location. It will be added to `src/` and `notebooks/` and shown in the building report.

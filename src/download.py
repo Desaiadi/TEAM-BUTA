@@ -1,17 +1,19 @@
 """Download the raw data for the project.
 
-Downloads three sources:
-  1. NYC 311 service requests, filtered to the study's complaint types and
-     dates. Fetched month by month and cached as one parquet file per
-     (complaint type, month), so an interrupted run resumes where it stopped.
-  2. NYC PLUTO tax-lot data: building age, residential units and so on.
-  3. Daily weather for Central Park from the Open-Meteo archive.
+Sources (all NYC Open Data, via the Socrata API):
+  - PLUTO tax lots: building age, apartments, location, address.
+  - Housing datasets: HPD complaints, violations, registrations and contacts,
+    bedbug filings, evictions and NYPD complaints (HOUSING_DATASETS in config).
+  - NYC 311 service requests: the full table month by month, or a subset of
+    complaint types. Used by the city response-time work.
+Dated data is fetched month by month and cached, so an interrupted run
+resumes where it stopped.
 
 Usage (from the project root):
-    python -m src.download              # everything
-    python -m src.download --only 311   # just one source: 311 | 311full | pluto | weather
+    python -m src.download                  # PLUTO + housing datasets (what the project needs)
+    python -m src.download --only pluto     # one source: pluto | housing | 311 | 311full
+    python -m src.download --only housing   # HPD, bedbugs, evictions, NYPD complaints
     python -m src.download --only 311full   # the complete 311 table (~23M rows, ~1.5 GB)
-    python -m src.download --only housing   # HPD complaints/violations/registrations/contacts, bedbugs, evictions
     python -m src.download --force      # ignore the cache and re-download
 """
 
@@ -223,7 +225,7 @@ def download_housing(force: bool = False, only: list[str] | None = None) -> None
 
 
 # --------------------------------------------------------------------------
-# 2. PLUTO
+# PLUTO
 # --------------------------------------------------------------------------
 def download_pluto(force: bool = False) -> None:
     """Download the PLUTO columns needed for building-level denominators."""
@@ -236,34 +238,7 @@ def download_pluto(force: bool = False) -> None:
     log.info("PLUTO: %s tax lots saved", f"{len(df):,}")
 
 
-# --------------------------------------------------------------------------
-# 3. Weather
-# --------------------------------------------------------------------------
-def download_weather(force: bool = False) -> None:
-    """Download daily Central Park weather (°F, inches, mph) from Open-Meteo."""
-    if config.RAW_WEATHER_FILE.exists() and not force:
-        log.info("Weather: cached at %s", config.RAW_WEATHER_FILE)
-        return
-    params = {
-        "latitude": config.WEATHER_LAT,
-        "longitude": config.WEATHER_LON,
-        "start_date": config.START_DATE,
-        "end_date": config.END_DATE,
-        "daily": ",".join(config.WEATHER_DAILY_VARS),
-        "temperature_unit": "fahrenheit",
-        "precipitation_unit": "inch",
-        "wind_speed_unit": "mph",
-        "timezone": "America/New_York",
-    }
-    resp = _get_with_retry(requests.Session(), config.WEATHER_URL, params)
-    df = pd.DataFrame(resp.json()["daily"])
-    config.RAW_WEATHER_FILE.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(config.RAW_WEATHER_FILE, index=False)
-    log.info("Weather: %d days saved", len(df))
-
-
-SOURCES = {"311": download_311, "311full": download_311_full, "pluto": download_pluto, "weather": download_weather,
-           "housing": download_housing}
+SOURCES = {"pluto": download_pluto, "housing": download_housing, "311": download_311, "311full": download_311_full}
 
 
 def main() -> None:
@@ -273,8 +248,7 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
 
-    # Weather and PLUTO are fast, so fetch them first.
-    for name in (["weather", "pluto", "311"] if args.only is None else [args.only]):
+    for name in (["pluto", "housing"] if args.only is None else [args.only]):
         SOURCES[name](force=args.force)
 
 
