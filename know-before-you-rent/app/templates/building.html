@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ b.address }} · Know Before You Rent{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('index') }}">← New search</a></p>
+
+<section class="building-head">
+  <div>
+    <h1>{{ b.address }}</h1>
+    <p class="muted">{{ b.borough|title }} {{ b.zipcode }} · built {{ b.yearbuilt }} · {{ b.units }} apartments · {{ b.floors|num }} floors · {{ b.kind }}</p>
+    <p>
+      {% if b.landlord %}Managed/owned by <strong>{{ b.landlord }}</strong>{% if b.portfolio > 1 %}, who runs <strong>{{ b.portfolio }}</strong> registered buildings{% endif %}.
+      {% elif not b.registered %}<span class="muted">Not registered with HPD, so no landlord information is available.</span>{% endif %}
+    </p>
+  </div>
+  <div id="map" class="map"></div>
+</section>
+
+<section>
+  <h2>What to expect next year</h2>
+  <div class="risk-grid">
+    {% for r in b.risks %}
+    <article class="risk risk-{{ r.level|lower }}">
+      <header><span class="badge">{{ r.level }}</span><span class="prob">{{ r.prob|pct }}</span></header>
+      <h3>{{ r.label }}</h3>
+      <p class="muted">{{ "%.1f"|format(r.times_city) }}× the typical building</p>
+      {% if r.reasons %}<ul>{% for why in r.reasons %}<li>{{ why }}</li>{% endfor %}</ul>{% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  <p class="muted small">Chance of at least one tenant complaint of that type in the next 12 months. The model was trained on 2023–24 history and checked on 2025 outcomes (AUC 0.89–0.93).</p>
+</section>
+
+<section class="two-col">
+  <div class="card">
+    <h2>Red flags right now</h2>
+    {% if b.flags %}<ul class="flags">{% for f in b.flags %}<li>{{ f }}</li>{% endfor %}</ul>
+    {% else %}<p>No open serious violations, recent bedbugs or evictions on record.</p>{% endif %}
+    <p class="muted small">{{ b.complaints_2y }} housing complaints in the last 2 years · {{ b.open_violations }} open violations of any class.</p>
+  </div>
+  <div class="card">
+    <h2>The landlord's other buildings</h2>
+    {% if b.portfolio > 1 %}
+    <table>
+      <tr><th>Complaints per 100 apartments</th><th>Landlord</th><th>NYC</th></tr>
+      {% for r in b.landlord_rates %}
+      <tr class="{{ 'worse' if r.landlord is not none and r.landlord == r.landlord and r.landlord > 1.5 * r.city }}">
+        <td>{{ r.label }}</td><td>{{ r.landlord|num(1) }}</td><td>{{ r.city|num(1) }}</td></tr>
+      {% endfor %}
+    </table>
+    <p class="muted small">Neighboring buildings with the same landlord share problems about 3× more often than neighbors with different landlords.</p>
+    {% else %}<p class="muted">This landlord has no other registered buildings to compare.</p>{% endif %}
+  </div>
+</section>
+
+{% if b.crime %}
+<section class="card">
+  <h2>Reported crime within 200 m <span class="muted small">(per year, 2025–26)</span></h2>
+  <div class="crime-row">
+    {% for k, v in b.crime.items() %}
+    <div><strong>{{ v.here|num }}</strong><span>{{ k }}</span><span class="muted small">NYC median building: {{ v.city|num }}</span></div>
+    {% endfor %}
+  </div>
+  <p class="muted small">Crimes reported to the NYPD, located at the nearest street segment. Reporting also reflects policing patterns; shown as context only.</p>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const here = [{{ b.lat }}, {{ b.lon }}];
+const map = L.map("map").setView(here, 15);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© OpenStreetMap"}).addTo(map);
+L.circle(here, {radius: 100, color: "#57068c", weight: 1, fillOpacity: 0.06}).addTo(map);
+L.circleMarker(here, {radius: 9, color: "#fff", weight: 2, fillColor: "#57068c", fillOpacity: 1})
+  .addTo(map).bindPopup("{{ b.address }}");
+const others = {{ others|tojson }};
+others.forEach(o => L.circleMarker([o.lat, o.lon], {radius: 5, color: "#fff", weight: 1,
+  fillColor: o.risk > 0.3 ? "#c0392b" : "#9aa0a6", fillOpacity: 0.9})
+  .addTo(map).bindPopup(`<a href="/building/${o.bbl}">${o.address}</a><br>same landlord`));
+if (others.length) map.fitBounds(L.latLngBounds([here, ...others.map(o => [o.lat, o.lon])]).pad(0.1), {maxZoom: 16});
+</script>
+{% endblock %}

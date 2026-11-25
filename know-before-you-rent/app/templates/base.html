@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Know Before You Rent{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('index') }}">Know Before You Rent</a>
+    <span class="tag">NYC · Team BUTA · DS-GA 1007</span>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+  <footer>
+    Built on NYC Open Data: HPD complaints, violations and registrations, PLUTO, bedbug reports, evictions, NYPD complaints.
+    Predictions show <em>reported</em> problems and are estimates, not guarantees.
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

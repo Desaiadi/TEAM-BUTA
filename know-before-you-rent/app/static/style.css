@@ -1,0 +1,59 @@
+:root {
+  --violet: #57068c; --violet-light: #efe6f7; --text: #1d1d24; --muted: #6b6b78; --line: #e5e3ea;
+  --high: #c0392b; --high-bg: #fdecea; --med: #b9770e; --med-bg: #fef5e6; --low: #2e7d4f; --low-bg: #eaf6ef;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--text); background: #faf9fc; line-height: 1.45; }
+main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+a { color: var(--violet); }
+h1 { font-size: 1.9rem; margin: 0 0 6px; }
+h2 { font-size: 1.15rem; margin: 0 0 12px; }
+h3 { font-size: 1rem; margin: 6px 0 2px; }
+.muted { color: var(--muted); }
+.small { font-size: 0.85rem; }
+
+.topbar { display: flex; align-items: baseline; gap: 16px; padding: 14px 24px; background: var(--violet); color: #fff; }
+.brand { color: #fff; font-weight: 700; font-size: 1.15rem; text-decoration: none; }
+.tag { opacity: 0.8; font-size: 0.85rem; }
+footer { max-width: 1100px; margin: 0 auto; padding: 16px; font-size: 0.8rem; color: var(--muted); border-top: 1px solid var(--line); }
+
+.hero { padding: 40px 0 16px; max-width: 720px; }
+.hero h1 { font-size: 2.3rem; }
+.search { position: relative; display: flex; gap: 8px; margin: 20px 0 8px; }
+.search input { flex: 1; font-size: 1.1rem; padding: 12px 14px; border: 2px solid var(--line); border-radius: 10px; }
+.search input:focus { outline: none; border-color: var(--violet); }
+.search button { padding: 0 22px; font-size: 1rem; border: 0; border-radius: 10px; background: var(--violet); color: #fff; cursor: pointer; }
+.suggestions { position: absolute; top: 54px; left: 0; right: 96px; margin: 0; padding: 4px 0; list-style: none; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.08); z-index: 1000; }
+.suggestions a { display: block; padding: 8px 14px; text-decoration: none; color: var(--text); }
+.suggestions a:hover { background: var(--violet-light); }
+
+.card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin: 16px 0; }
+.results { list-style: none; padding: 0; margin: 0; }
+.results li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.examples { margin-top: 24px; }
+.example-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.example { display: flex; flex-direction: column; gap: 2px; padding: 14px; background: #fff; border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: var(--text); }
+.example:hover { border-color: var(--violet); }
+
+.building-head { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; margin-bottom: 8px; }
+.map { height: 260px; border-radius: 12px; border: 1px solid var(--line); }
+.risk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.risk { background: #fff; border: 1px solid var(--line); border-left: 5px solid var(--low); border-radius: 10px; padding: 12px 14px; }
+.risk header { display: flex; justify-content: space-between; align-items: center; }
+.risk ul { margin: 8px 0 0; padding-left: 18px; font-size: 0.85rem; }
+.badge { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+.prob { font-size: 1.4rem; font-weight: 700; }
+.risk-high { border-left-color: var(--high); } .risk-high .badge { background: var(--high-bg); color: var(--high); }
+.risk-medium { border-left-color: var(--med); } .risk-medium .badge { background: var(--med-bg); color: var(--med); }
+.risk-low .badge { background: var(--low-bg); color: var(--low); }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.flags { padding-left: 18px; } .flags li { color: var(--high); margin-bottom: 4px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { text-align: left; padding: 5px 4px; border-bottom: 1px solid var(--line); }
+td:nth-child(n+2), th:nth-child(n+2) { text-align: right; }
+tr.worse td:nth-child(2) { color: var(--high); font-weight: 700; }
+.crime-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.crime-row div { display: flex; flex-direction: column; } .crime-row strong { font-size: 1.5rem; }
+
+@media (max-width: 800px) { .building-head, .two-col { grid-template-columns: 1fr; } .hero h1 { font-size: 1.8rem; } }
