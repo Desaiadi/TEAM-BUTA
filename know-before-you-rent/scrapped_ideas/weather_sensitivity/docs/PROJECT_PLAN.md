@@ -1,6 +1,6 @@
 # Project Plan: Weather Sensitivity of NYC 311 Complaints
 
-Team BUTA · DS-GA 1007 · Aditya's sub-project (part of "The 100-Meter Inequality")
+Team BUTA · DS-GA 1007 · an early direction of "The 100-Meter Inequality" (not pursued)
 
 ## The idea
 Neighboring areas of NYC get **the same weather**. If their 311 complaints still react to it differently, the difference has to come from the place itself: its buildings, boilers and drains. Weather becomes a natural "stress test" that is applied to every block equally.

@@ -1,6 +1,6 @@
 """Know Before You Rent: Flask demo.
 
-Run from the subproject folder (after `python -m src.app_data`):
+Run from the know-before-you-rent folder (after `python -m src.app_data`):
 
     python app/app.py          # then open http://127.0.0.1:5050
 

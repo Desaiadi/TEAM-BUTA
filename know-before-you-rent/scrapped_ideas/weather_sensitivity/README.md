@@ -10,7 +10,7 @@
 - ZIP codes differ a lot (+23% to +192% for the same cold), and neighbors are no more alike than random ZIPs (heat). Sewer sensitivity is spatially clustered.
 - Pre-1940 buildings: ~4× heat complaints per apartment vs 2000+
 
-**Why we moved on:** it was hard to explain as a product, and it overlapped with the team's other 311 analyses. Building age and the 100 m neighborhood carried over into Know Before You Rent.
+**Why we moved on:** it was hard to turn into a product a renter would use, and other 311 analyses already covered city response patterns. Building age and the 100 m neighborhood carried over into Know Before You Rent.
 
 ## Contents
 | Folder | What |
