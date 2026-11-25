@@ -20,4 +20,4 @@
 | `figures/` | Exported charts |
 | `docs/` | Original plan, README and exploration notes |
 
-To re-run: copy `src/*.py` back into the project's `src/` folder and run the notebooks from `notebooks/` in order (they use `src/config.py`, `download.py`, `preprocess.py`, `transform.py`, `plots.py` from the main project).
+To re-run: copy `src/*.py` into the repository's `src/` folder and run the notebooks from `notebooks/` in order (they use `src/config.py`, `download.py`, `preprocess.py`, `transform.py`, `plots.py` from the main project).
