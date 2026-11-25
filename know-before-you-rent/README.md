@@ -64,7 +64,8 @@ Then run `notebooks/rent_01` → `rent_12` in order, with VS Code's kernel set t
 
 ## Demo app
 ```bash
-python -m src.app_data      # scores every building once (~2 min)
+python -m src.app_data      # scores every building once (~1 min)
+python -m src.insights      # chart data: datasets, findings, model evaluation (~2 min)
 python app/app.py           # open http://127.0.0.1:5050
 ```
 Type an address to see the building's report:
@@ -73,3 +74,12 @@ Type an address to see the building's report:
 - How the landlord's other buildings compare to NYC.
 - Reported crime within 200 m.
 - A map of the landlord's nearby buildings.
+- Charts: risk vs a typical building, complaint and violation history by year, the landlord vs NYC, and crime vs NYC.
+
+The **Data & model insights** page (`/insights`) charts the datasets (monthly complaints by type, violations by severity, bedbugs, crime, evictions), the findings for Q1–Q4, and the model evaluation:
+- test AUC for each model against the baseline;
+- how accuracy grows as each group of inputs is added;
+- whether the risk levels hold up;
+- a calibration chart with a problem-type filter.
+
+Every chart has a "View as table" toggle.
