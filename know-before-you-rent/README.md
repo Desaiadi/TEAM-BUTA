@@ -20,6 +20,7 @@ Before signing a lease, a renter types an address and sees which problems to exp
 | PLUTO (`64uk-42ks`) | 858k lots | Year built, apartments, floors, building class, location |
 | Bedbug Reporting (`wz6d-d3jb`) | 727k filings | Yearly infested units per building |
 | Evictions (`6z8x-wfk4`) | 138k | Executed evictions by building |
+| NYPD Complaints, historic + current year (`qgea-i56i`, `5uac-w243`) | 2.67M, 2022 → now | Reported crime within 200 m of each building (no demographic fields used) |
 | 311 Service Requests (`erm2-nwe9`) | 23.3M | Downloaded in full; used by the scrapped weather idea |
 
 ## Results so far
