@@ -6,6 +6,8 @@
 
 City and borough averages hide sharp local differences: two apartment buildings 100 meters apart can have very different heat, pest, leak and safety problems. This project measures those gaps using NYC open data, explains them, and turns them into a prediction a renter can use before signing a lease.
 
+📄 **[Read the project report (PDF)](know-before-you-rent/docs/Project_Report.pdf)**
+
 ![Building report in the Know Before You Rent web app](know-before-you-rent/docs/demo_building_report.png)
 
 ## What we found
