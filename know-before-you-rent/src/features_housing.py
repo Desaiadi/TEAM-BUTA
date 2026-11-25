@@ -26,6 +26,8 @@ from src.clean_housing import OUT
 
 TARGET_TYPES = ["heat/hot water", "pests", "leaks/mold", "plumbing", "paint/plaster", "doors/windows", "safety"]
 NEIGHBOR_RADIUS_M = 100
+CRIME_RADIUS_M = 200          # NYPD geocodes reports to the nearest street segment, so 100 m is too tight
+CRIME_GROUPS = ["violent", "property", "drugs/weapons", "harassment"]
 FEATURES_FILE = config.PROCESSED_DIR / "building_features_{year}.parquet"
 
 
@@ -47,7 +49,37 @@ def load_inputs() -> dict[str, pd.DataFrame]:
         "violations": pd.read_parquet(OUT["hpd_violations"], columns=["bbl", "year", "class", "problem_type"]),
         "bedbugs": pd.read_parquet(OUT["bedbugs"], columns=["bbl", "year", "has_infestation"]),
         "evictions": pd.read_parquet(OUT["evictions"], columns=["bbl", "year"]),
+        "crime": (pd.read_parquet(OUT["crime"], columns=["year", "severity", "crime_group", "in_residence",
+                                                         "latitude", "longitude"])
+                  if OUT["crime"].exists() else None),
     }
+
+
+def _to_meters(lat, lon, lat0: float) -> np.ndarray:
+    """Project latitude/longitude to local x/y meters (accurate to <1% across NYC)."""
+    return np.column_stack([np.asarray(lon) * 111_320 * np.cos(lat0), np.asarray(lat) * 110_540])
+
+
+def crime_counts(b: pd.DataFrame, crime: pd.DataFrame, years, radius_m: float = CRIME_RADIUS_M) -> pd.DataFrame:
+    """Reported crimes within `radius_m` of each building over `years`, per year, by group and severity.
+
+    A k-d tree on the crime points answers "how many points within r" for all
+    buildings at once (query_ball_point with return_length).
+    """
+    lat0 = np.radians(b["latitude"].mean())
+    xy_b = _to_meters(b["latitude"], b["longitude"], lat0)
+    c = crime[crime["year"].isin(years)]
+    out = pd.DataFrame(index=b.index)
+    subsets = {"crime_total": c, "crime_felony": c[c["severity"] == "FELONY"],
+               "crime_in_residence": c[c["in_residence"]]}
+    subsets.update({f"crime_{slug(g)}": c[c["crime_group"] == g] for g in CRIME_GROUPS})
+    for name, sub in subsets.items():
+        if len(sub) == 0:
+            out[name] = 0.0
+            continue
+        tree = cKDTree(_to_meters(sub["latitude"], sub["longitude"], lat0))
+        out[name] = tree.query_ball_point(xy_b, radius_m, return_length=True, workers=-1) / len(years)
+    return out
 
 
 def building_universe(pluto: pd.DataFrame, landlords: pd.DataFrame, min_units: int = 3) -> pd.DataFrame:
@@ -157,6 +189,12 @@ def build_snapshot(target_year: int, inp: dict[str, pd.DataFrame], universe: pd.
     for j, t in enumerate(TARGET_TYPES):
         X[f"nb100_{slug(t)}"] = nb_counts[:, j]
     X["nb100_buildings"] = np.asarray(A.sum(axis=1)).ravel()
+
+    # Reported crime within 200 m (per year over the history window)
+    if inp.get("crime") is not None:
+        cc = crime_counts(b, inp["crime"], hist)
+        for col in cc.columns:
+            X[col] = cc[col].to_numpy()
 
     # Targets
     y = counts_by(c, bbls, [target_year], "problem_type", TARGET_TYPES, "y_", distinct="complaint_id")

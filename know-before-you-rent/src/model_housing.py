@@ -39,10 +39,12 @@ def feature_groups(columns: list[str]) -> dict[str, list[str]]:
                                                  "is_walkup", "is_registered"}],
         "landlord": [c for c in columns if c.startswith("ll_rate_") or c in {"portfolio_buildings", "has_portfolio"}],
         "neighborhood": [c for c in columns if c.startswith("nb100_")],
+        "crime": [c for c in columns if c.startswith("crime_")],
     }
     used = set().union(*groups.values())
     groups["history"] = [c for c in columns if c not in used]
-    return {k: groups[k] for k in ["building", "history", "landlord", "neighborhood"]}
+    order = ["building", "history", "landlord", "neighborhood", "crime"]
+    return {k: groups[k] for k in order if groups[k]}
 
 
 def to_matrix(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
@@ -120,9 +122,10 @@ def ablation(train: pd.DataFrame, test: pd.DataFrame, kind: str = "gbm") -> pd.D
     """Add feature groups one at a time and record test AUC / AP for each problem type."""
     groups = feature_groups(feature_columns(train))
     steps, used = [], []
-    for name in ["building", "history", "landlord", "neighborhood"]:
+    names = list(groups)          # building, history, landlord, neighborhood[, crime]
+    for k, name in enumerate(names):
         used = used + groups[name]
-        steps.append((" + ".join(["building", "history", "landlord", "neighborhood"][:len(steps) + 1]), list(used)))
+        steps.append((" + ".join(names[:k + 1]), list(used)))
     rows = []
     for problem in TARGET_TYPES:
         y_tr, y_te = train[f"y_{slug(problem)}"], test[f"y_{slug(problem)}"]
@@ -158,6 +161,7 @@ REASONS = {
     "v_": "inspectors issued {v:.0f} {t} violation(s) in the last 2 years",
     "ll_rate_": "the landlord's other buildings average {v:.1f} {t} complaints per 100 apartments",
     "nb100_": "{v:.0f} {t} complaints in other buildings within 100 m",
+    "crime_": "{v:.0f} {t} crimes reported per year within 200 m",
 }
 
 
