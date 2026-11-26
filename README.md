@@ -77,21 +77,39 @@ Covering 172,546 NYC apartment buildings (3+ units), January 2022 to November 20
 **For the app:** the models are retrained on the 2025 table and score every building from its 2025–26 history (`python -m src.app_data`). Code: `src/model_housing.py`, `src/features_housing.py`; walkthrough in `notebooks/11_model.ipynb`.
 
 ## The product
-A Flask web app. Type an NYC address and get the building's report:
-- Its risk for 7 problem types next year, with plain-English reasons.
-- Red flags: open hazardous violations, lead, bedbugs, evictions.
-- Its complaint and violation history.
-- How the landlord's other buildings compare with NYC.
-- Reported crime nearby.
-- A map of the landlord's nearby buildings.
+A Flask web app built around one page, **Explore** (`/`).
 
-A **Data & model insights** page charts the datasets, the findings and the model evaluation. Every chart has a "View as table" toggle.
+**Pick one building or two.** A 3D map of New York with draggable A/B pins. Switch
+between *One building* and *Compare two*, then click a building on the map, drag a
+pin, or search an address. Each pin snaps to the nearest apartment building (3+
+units) in our data. Press **Check** and the page shows, for each building:
+- **What to expect next year**: its predicted chance of 7 problem types, with
+  plain-English reasons, against the typical NYC building. With two buildings the
+  predictions sit side by side, and the page says which has the lower risk.
+- Its complaint and violation history (on one shared scale when comparing).
+- Red flags: open hazardous violations, lead, bedbugs, evictions.
+- How the landlord's other buildings compare with NYC, and reported crime nearby.
+- **Around the block**: live 311 service requests within a chosen radius and time
+  window of each pin (total reports, median closure time, share still open, a
+  breakdown by category, and which block fits your priorities).
+
+Results download as CSV, and `?mode=one` opens Explore in one-building mode.
+Every building also has a full report page at `/building/<bbl>`, with a map of the
+landlord's nearby buildings.
+
+**`/insights` — Data & model.** Charts the datasets, the findings and the model
+evaluation. Every chart has a "View as table" toggle.
+
+If the building data hasn't been built yet, the app still starts: the map and the
+live 311 comparison work, and Explore says which pipeline steps to run.
 
 ## Repository layout
 ```
 ├── src/            Python package: download, cleaning, features, models, app data
 ├── notebooks/      01–12: explore → clean → build features → model → analysis
-├── app/            Flask web app (templates, charts, styles)
+├── app/            Flask web app
+│   ├── templates/  Explore (/), building report, insights
+│   └── static/     BUTA design system, chart helpers, vendored MapLibre + Leaflet
 ├── reports/        Cleaning audit reports, model results, figures
 ├── docs/           Project report, screenshots, original proposal and brief
 ├── data/           Downloaded and processed data (created locally, not committed)
@@ -118,8 +136,26 @@ A **Data & model insights** page charts the datasets, the findings and the model
 | `transform.py`, `plots.py` | Streaming the full 311 table month by month; shared plotting style |
 
 ## Run it
+
+### The map and live 311 comparison, in under a minute
+`/` needs no downloads and no models — only Flask. From the repository root:
+
 ```bash
-python3.13 -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install flask
+python app/app.py                  # open http://127.0.0.1:5050
+```
+
+It needs an internet connection: map tiles come from OpenFreeMap, addresses from
+the NYC Planning Labs geocoder, and the reports themselves from the NYC Open Data
+311 API. Explore will tell you what to build for the building reports.
+
+### Everything, including the building reports
+
+```bash
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python -m src.download --only pluto
 python -m src.download --only housing      # HPD, bedbugs, evictions, crime (~1 GB, 30–60 min)

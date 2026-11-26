@@ -1,13 +1,17 @@
 {% extends "base.html" %}
-{% block title %}{{ b.address }} · Know Before You Rent{% endblock %}
+{% block title %}{{ b.address }} · BUTA{% endblock %}
+{% block description %}Predicted housing problems, red flags and landlord record for {{ b.address }}.{% endblock %}
 {% block head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% include "_chartlibs.html" %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet.css') }}">
 {% endblock %}
 {% block content %}
-<p><a href="{{ url_for('index') }}">← New search</a></p>
+<div class="page">
+<a class="backlink" href="{{ url_for('index') }}">← Back to Explore</a>
 
 <section class="building-head">
   <div>
+    <span class="eyebrow dark">BUILDING REPORT</span>
     <h1>{{ b.address }}</h1>
     <p class="muted">{{ b.borough|title }} {{ b.zipcode }} · built {{ b.yearbuilt }} · {{ b.units }} apartments · {{ b.floors|num }} floors · {{ b.kind }}</p>
     <p>
@@ -75,49 +79,57 @@
   <p class="muted small">Crimes reported to the NYPD, located at the nearest street segment. Reporting also reflects policing patterns; shown as context only.</p>
 </section>
 {% endif %}
+
+<section class="card">
+  <h2>Compare it with another building</h2>
+  <p class="muted small">In <a href="{{ url_for('index') }}">Explore</a>, switch to
+    "Compare two" and pick a second building on the map to see both reports side by side,
+    with the live 311 picture of the street around each.</p>
+</section>
+</div>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='vendor/leaflet.js') }}"></script>
 <script>
 const here = [{{ b.lat }}, {{ b.lon }}];
 const map = L.map("map").setView(here, 15);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© OpenStreetMap"}).addTo(map);
-L.circle(here, {radius: 100, color: "#57068c", weight: 1, fillOpacity: 0.06}).addTo(map);
-L.circleMarker(here, {radius: 9, color: "#fff", weight: 2, fillColor: "#57068c", fillOpacity: 1})
+L.circle(here, {radius: 100, color: "#178570", weight: 1, fillOpacity: 0.07}).addTo(map);
+L.circleMarker(here, {radius: 9, color: "#fff", weight: 2, fillColor: "#178570", fillOpacity: 1})
   .addTo(map).bindPopup("{{ b.address }}");
 const others = {{ others|tojson }};
 others.forEach(o => L.circleMarker([o.lat, o.lon], {radius: 5, color: "#fff", weight: 1,
-  fillColor: o.risk > 0.3 ? "#c0392b" : "#9aa0a6", fillOpacity: 0.9})
+  fillColor: o.risk > 0.3 ? "#bf4f33" : "#a3b5ae", fillOpacity: 0.9})
   .addTo(map).bindPopup(`<a href="/building/${o.bbl}">${o.address}</a><br>same landlord`));
 if (others.length) map.fitBounds(L.latLngBounds([here, ...others.map(o => [o.lat, o.lon])]).pad(0.1), {maxZoom: 16});
 
 const C = {{ charts|tojson }};
 const TYPES = {{ type_order|tojson }};
 
-kbyrChart("riskChart", "bar", C.risk.labels, [
-  {label: "This building", data: C.risk.building, color: KBYR.violet},
-  {label: "Typical building", data: C.risk.typical, color: KBYR.grey},
+butaChart("riskChart", "bar", C.risk.labels, [
+  {label: "This building", data: C.risk.building, color: PALETTE.teal},
+  {label: "Typical building", data: C.risk.typical, color: PALETTE.grey},
 ], {horizontal: true, format: "pct", yMax: 1, labelHeader: "Problem"});
 
-kbyrChart("historyChart", "bar", C.years,
-  TYPES.map(t => ({label: t, data: C.complaints[t], color: KBYR.typeColors[t]})),
+butaChart("historyChart", "bar", C.years,
+  TYPES.map(t => ({label: t, data: C.complaints[t], color: PALETTE.typeColors[t]})),
   {stacked: true, format: "int", labelHeader: "Year"});
 
-kbyrChart("violationChart", "bar", C.years, [
-  {label: "Class A", data: C.violations.A, color: KBYR.ordinal[0]},
-  {label: "Class B", data: C.violations.B, color: KBYR.ordinal[1]},
-  {label: "Class C", data: C.violations.C, color: KBYR.ordinal[2]},
+butaChart("violationChart", "bar", C.years, [
+  {label: "Class A", data: C.violations.A, color: PALETTE.ordinal[0]},
+  {label: "Class B", data: C.violations.B, color: PALETTE.ordinal[1]},
+  {label: "Class C", data: C.violations.C, color: PALETTE.ordinal[2]},
 ], {stacked: true, format: "int", labelHeader: "Year"});
 
-kbyrChart("landlordChart", "bar", C.landlord.labels, [
-  {label: "Landlord's other buildings", data: C.landlord.landlord, color: KBYR.violet},
-  {label: "All NYC buildings", data: C.landlord.city, color: KBYR.grey},
+butaChart("landlordChart", "bar", C.landlord.labels, [
+  {label: "Landlord's other buildings", data: C.landlord.landlord, color: PALETTE.teal},
+  {label: "All NYC buildings", data: C.landlord.city, color: PALETTE.grey},
 ], {horizontal: true, format: "one", labelHeader: "Problem"});
 
-kbyrChart("crimeChart", "bar", C.crime.labels, [
-  {label: "Within 200 m of this building", data: C.crime.here, color: KBYR.violet},
-  {label: "Median NYC building", data: C.crime.city, color: KBYR.grey},
+butaChart("crimeChart", "bar", C.crime.labels, [
+  {label: "Within 200 m of this building", data: C.crime.here, color: PALETTE.teal},
+  {label: "Median NYC building", data: C.crime.city, color: PALETTE.grey},
 ], {horizontal: true, format: "int", labelHeader: "Crimes per year"});
 </script>
 {% endblock %}

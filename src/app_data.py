@@ -120,6 +120,7 @@ def build() -> pd.DataFrame:
 
     models = train_production(train, cols)
     base = {p: float(train[f"y_{F.slug(p)}"].mean()) for p in F.TARGET_TYPES}
+    APP_MODELS.parent.mkdir(parents=True, exist_ok=True)   # models/ is gitignored
     joblib.dump({"features": cols, "base_rates": base, "models": models}, APP_MODELS)
 
     X = M.to_matrix(current, cols)

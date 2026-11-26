@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}BUTA | Know the building, know the block{% endblock %}
+{% block description %}Pick one or two NYC buildings on the map and see what to expect inside them next year, and what gets reported on the street around them.{% endblock %}
+
+{% block head %}
+{% include "_chartlibs.html" %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/maplibre-gl.css') }}">
+{% endblock %}
+
+{% block nav_extra %}<a href="#method">Our methodology</a>{% endblock %}
+
+{% block content %}
+<section class="intro">
+  <div>
+    <span class="eyebrow">SAME CITY. DIFFERENT EVERYDAY.</span>
+    <h1>A better home starts<br>with a closer look<span>.</span></h1>
+    <p>Pick a building, or two a few streets apart. See what to expect inside them<br class="desktop">
+      next year, and what gets reported on the street around them.</p>
+  </div>
+  <div class="intro-note">
+    <span class="lineicon">⌖</span>
+    <strong>Life happens at street level.</strong>
+    <p>Predictions for every NYC apartment building,<br>next to live 311 reports from the block.</p>
+    <a href="#method">How we built it ↓</a>
+  </div>
+</section>
+
+<section class="workspace" id="explore">
+  <aside>
+    <div class="sectiontop">
+      <h2>Choose your buildings</h2>
+      <span class="tag">NYC</span>
+    </div>
+
+    <div class="mode-switch" role="group" aria-label="How many buildings to check">
+      <button type="button" id="modeOne" aria-pressed="false">One building</button>
+      <button type="button" id="modeTwo" class="active" aria-pressed="true">Compare two</button>
+    </div>
+    <p class="muted" id="pickhelp">Choose a pin, then click a building on the map.</p>
+
+    <button type="button" class="location selected" id="pickA">
+      <span class="pin a">A</span>
+      <span>
+        <small>BUILDING A</small>
+        <strong id="nameA">East Village</strong>
+        <em id="coordsA"></em>
+      </span>
+      <span class="edit">⌖</span>
+    </button>
+    <button type="button" class="location" id="pickB">
+      <span class="pin b">B</span>
+      <span>
+        <small>BUILDING B</small>
+        <strong id="nameB">Lower East Side</strong>
+        <em id="coordsB"></em>
+      </span>
+      <span class="edit">⌖</span>
+    </button>
+
+    <form id="searchForm">
+      <label for="search">Find an NYC address</label>
+      <div class="searchrow">
+        <input id="search" placeholder="e.g. 235 East 92nd Street" autocomplete="off" required>
+        <button type="submit" aria-label="Search address">⌕</button>
+      </div>
+    </form>
+    <div id="searchResults" aria-live="polite"></div>
+
+    <div class="filters">
+      <label>Street area around each pin
+        <select id="radius">
+          <option value="100">100 meters</option>
+          <option value="200" selected>200 meters</option>
+          <option value="500">500 meters</option>
+        </select>
+      </label>
+      <label>311 time period
+        <select id="period">
+          <option value="30">Last 30 days</option>
+          <option value="90" selected>Last 90 days</option>
+          <option value="365">Last 12 months</option>
+        </select>
+      </label>
+    </div>
+
+    <button type="button" class="primary" id="check">Check these buildings</button>
+    <p class="note-center">Same model. Same radius. Same time period.</p>
+
+    {% if not data_ready %}
+    <div class="notice aside-notice">
+      {% if reason == "deps" %}
+      <strong>Building reports are off.</strong> Install the analysis stack with
+      <code>pip install -r requirements.txt</code>, build the data (see the README) and restart.
+      {% else %}
+      <strong>Building reports aren't built yet.</strong> Run
+      <code>python -m src.app_data</code> and <code>python -m src.insights</code>, then restart.
+      {% endif %}
+      The map and live 311 comparison work meanwhile.
+    </div>
+    {% endif %}
+  </aside>
+
+  <div class="mapwrap">
+    <div id="map" aria-label="Interactive map for choosing NYC buildings"></div>
+    <div class="mapbadge"><span class="pulse"></span> NEW YORK · IN PERSPECTIVE</div>
+    <div class="maptools">
+      <div class="view-switch" role="group" aria-label="Map perspective">
+        <button type="button" id="view2d" aria-pressed="false">2D</button>
+        <button type="button" id="view3d" class="active" aria-pressed="true">3D</button>
+      </div>
+      <button type="button" id="fitpins" class="fitpins">⌖ Fit both pins</button>
+    </div>
+    <div id="mapnotice" role="status"></div>
+    <div class="maphint" id="maphint">Click a building to move location A</div>
+  </div>
+</section>
+
+<section class="report" id="report">
+  <div class="sectiontop">
+    <div>
+      <span class="eyebrow dark">THE BUILDING PICTURE</span>
+      <h2 id="reportTitle">What you'd be signing up for.</h2>
+    </div>
+    <button type="button" class="outline" id="export" disabled>Download comparison</button>
+  </div>
+  <p id="status" role="status">Choose your buildings and press Check.</p>
+
+  <div id="resultsEmpty" class="results-empty">
+    Pick a building on the map, or two, and press <strong>Check</strong>.
+  </div>
+
+  <div id="results" hidden>
+    <div id="bheads" class="bheads"></div>
+
+    <section id="expectSection">
+      <h2 class="section-title">What to expect next year</h2>
+      <p class="muted small">Chance of at least one tenant complaint of each type in the next 12 months.
+        The models were trained on 2023–24 history and checked on 2025 outcomes (AUC 0.89–0.93).</p>
+      <p class="expect-lead" id="expectLead"></p>
+      <div id="expect"></div>
+    </section>
+
+    <div id="charts"></div>
+
+    <section class="street" id="streetSection">
+      <span class="eyebrow dark">AROUND THE BLOCK</span>
+      <h2>Small distance. Real differences.</h2>
+      <p class="muted small" id="streetLead">Live NYC 311 service requests within the same radius and time period of each pin.</p>
+      <div id="street"></div>
+    </section>
+  </div>
+</section>
+
+<section id="method" class="method">
+  <div>
+    <span class="eyebrow dark">BEHIND THE COMPARISON</span>
+    <h2>A little context<br>goes a long way.</h2>
+    <a href="{{ url_for('insights') }}">See the data &amp; model ↗</a><br>
+    <a href="https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2020-to-Present/erm2-nwe9" target="_blank" rel="noreferrer">Explore the 311 source data ↗</a>
+  </div>
+  <div>
+    <h3>Predictions for the building</h3>
+    <p>"What to expect next year" comes from one model per problem type, trained on every NYC apartment building with 3+ units: its HPD complaint and violation history, its landlord's other buildings, its neighbours within 100 m, bedbug filings, evictions and nearby crime. A click on the map picks the nearest of those buildings within 150 m.</p>
+    <h3>Real reports, consistent boundaries</h3>
+    <p>"Around the block" queries NYC 311 requests live, within the selected radius of each pin and the same rolling time window. Counts include only geocoded requests. Overlapping circles can include the same requests.</p>
+    <h3>A transparent recommendation</h3>
+    <p>The balanced view compares total requests. A chosen priority compares that category only. A minimum of 20 combined reports and a 10% difference are needed to suggest a lower-reporting location. These are simple display rules, not statistical significance tests.</p>
+    <h3>Reports are only part of the story</h3>
+    <p>Reporting habits, foot traffic and building density affect counts, which are not adjusted for population. Predictions show <em>reported</em> problems and are estimates, not guarantees. Closure does not necessarily mean resolution.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/maplibre-gl.js') }}"></script>
+<script>
+  window.BUTA = {
+    styleUrl: {{ url_for('static', filename='vendor/map-style.json')|tojson }},
+    dataReady: {{ data_ready|tojson }},
+    types: {{ type_order|tojson }},
+    api: {
+      nearest: {{ url_for('api_nearest')|tojson }},
+      search: {{ url_for('api_search')|tojson }},
+      building: {{ url_for('api_building', bbl='0')[:-1]|tojson }},
+    },
+  };
+</script>
+<script src="{{ url_for('static', filename='explore.js') }}"></script>
+{% endblock %}

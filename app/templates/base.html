@@ -3,25 +3,41 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Know Before You Rent{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <script src="{{ url_for('static', filename='charts.js') }}"></script>
+  <title>{% block title %}BUTA | The 100-meter inequality{% endblock %}</title>
+  <meta name="description" content="{% block description %}Explore how life changes across the street, and what to expect inside a building before you sign the lease.{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap">
   {% block head %}{% endblock %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="{{ url_for('index') }}">Know Before You Rent</a>
+    <a class="brand" href="{{ url_for('index') }}">
+      <span class="brandmark">b.</span>BUTA<span class="brandcaption">THE 100-METER INEQUALITY</span>
+    </a>
     <nav>
-      <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint in ('index', 'search_page', 'building') }}">Search</a>
-      <a href="{{ url_for('insights') }}" class="{{ 'active' if request.endpoint == 'insights' }}">Data &amp; model insights</a>
+      <a href="{{ url_for('index') }}"
+         class="{{ 'active' if request.endpoint in ('index', 'building') }}">Explore</a>
+      <a href="{{ url_for('insights') }}"
+         class="{{ 'active' if request.endpoint == 'insights' }}">Data &amp; model</a>
+      {% block nav_extra %}{% endblock %}
+      <span class="city">NEW YORK CITY</span>
     </nav>
   </header>
+
   <main>{% block content %}{% endblock %}</main>
-  <footer>
-    Built on NYC Open Data: HPD complaints, violations and registrations, PLUTO, bedbug reports, evictions, NYPD complaints.
-    Predictions show <em>reported</em> problems and are estimates, not guarantees.
+
+  <footer class="sitefoot">
+    <a class="brand" href="{{ url_for('index') }}"><span class="brandmark">b.</span>BUTA</a>
+    <span class="fine">
+      Built on NYC Open Data: 311 service requests, HPD complaints, violations and registrations,
+      PLUTO, bedbug reports, evictions and NYPD complaints. Reported problems are not the same as
+      actual conditions, and predictions are estimates, not guarantees.
+    </span>
+    <span>Team BUTA · The 100-meter inequality</span>
   </footer>
+
   {% block scripts %}{% endblock %}
 </body>
 </html>

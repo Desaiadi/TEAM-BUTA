@@ -1,7 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Data & model insights · Know Before You Rent{% endblock %}
+{% block title %}Data &amp; model insights · BUTA{% endblock %}
+{% block description %}What the NYC datasets show, what explains differences between buildings, and how well the models predict next year's problems.{% endblock %}
+{% block head %}{% include "_chartlibs.html" %}{% endblock %}
 {% block content %}
-<section class="hero" style="padding-top:16px;">
+<div class="page">
+<section class="hero" style="padding-top:28px;">
+  <span class="eyebrow dark">BEHIND THE MODEL</span>
   <h1>Data &amp; model insights</h1>
   <p>What the datasets show, what explains differences between buildings, and how well the models predict next year's problems.</p>
   <nav class="jump">
@@ -131,6 +135,7 @@
   <p class="muted small">Buildings grouped into ten bands by predicted probability: predicted vs observed rate in 2025. Close lines mean the percentages can be taken at face value.</p>
   <div class="chart" style="height:300px"><canvas id="calibration" role="img" aria-label="Predicted versus observed problem rate by decile"></canvas></div>
 </section>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -141,56 +146,56 @@ const pick = (rows, key) => TYPES.map(t => rows.find(r => r.type === t)[key]);
 
 // ---- Datasets
 const cm = I.trends.complaints_monthly;
-kbyrChart("complaintsMonthly", "line", cm.months,
-  TYPES.map(t => ({label: t, data: cm.series[t], color: KBYR.typeColors[t]})), {format: "int", labelHeader: "Month"});
+butaChart("complaintsMonthly", "line", cm.months,
+  TYPES.map(t => ({label: t, data: cm.series[t], color: PALETTE.typeColors[t]})), {format: "int", labelHeader: "Month"});
 const vy = I.trends.violations_yearly;
-kbyrChart("violationsYearly", "bar", vy.years.map(String),
-  ["A", "B", "C"].map((k, i) => ({label: "Class " + k, data: vy.series[k], color: KBYR.ordinal[i]})),
+butaChart("violationsYearly", "bar", vy.years.map(String),
+  ["A", "B", "C"].map((k, i) => ({label: "Class " + k, data: vy.series[k], color: PALETTE.ordinal[i]})),
   {stacked: true, format: "int", labelHeader: "Year"});
 const bb = I.trends.bedbug_share_yearly;
-kbyrChart("bedbugs", "bar", bb.years.map(String), [{label: "Filings with bedbugs", data: bb.values, color: KBYR.violet}],
+butaChart("bedbugs", "bar", bb.years.map(String), [{label: "Filings with bedbugs", data: bb.values, color: PALETTE.teal}],
   {format: "pct", labelHeader: "Year"});
-kbyrChart("crimeMonthly", "line", I.trends.crime_monthly.months,
-  [{label: "Reported crimes", data: I.trends.crime_monthly.values, color: KBYR.violet}], {format: "int", labelHeader: "Month"});
-kbyrChart("evictionsMonthly", "line", I.trends.evictions_monthly.months,
-  [{label: "Evictions", data: I.trends.evictions_monthly.values, color: KBYR.violet}], {format: "int", labelHeader: "Month"});
+butaChart("crimeMonthly", "line", I.trends.crime_monthly.months,
+  [{label: "Reported crimes", data: I.trends.crime_monthly.values, color: PALETTE.teal}], {format: "int", labelHeader: "Month"});
+butaChart("evictionsMonthly", "line", I.trends.evictions_monthly.months,
+  [{label: "Evictions", data: I.trends.evictions_monthly.values, color: PALETTE.teal}], {format: "int", labelHeader: "Month"});
 
 // ---- Findings
 const F = I.findings;
-kbyrChart("q1", "bar", TYPES, [
-  {label: "Had it in 2022–23", data: pick(F.q1_history, "had"), color: KBYR.violet},
-  {label: "Didn't", data: pick(F.q1_history, "not"), color: KBYR.grey}], {format: "pct", labelHeader: "Problem"});
-kbyrChart("q2", "bar", TYPES, [
-  {label: "Worst 25% of landlords", data: pick(F.q2_landlord_quartiles, "worst"), color: KBYR.violet},
-  {label: "Best 25%", data: pick(F.q2_landlord_quartiles, "best"), color: KBYR.grey}], {format: "pct", labelHeader: "Problem"});
-kbyrChart("q2n", "bar", TYPES, [
-  {label: "Same landlord", data: pick(F.q2_neighbors, "same"), color: KBYR.violet},
-  {label: "Different landlord", data: pick(F.q2_neighbors, "different"), color: KBYR.grey}], {format: "pct", labelHeader: "Problem"});
-kbyrChart("q3", "line", F.q3_era.eras,
-  TYPES.map(t => ({label: t, data: F.q3_era.series[t], color: KBYR.typeColors[t], points: true})), {format: "pct", labelHeader: "Built"});
-kbyrChart("q4", "bar", TYPES, [
-  {label: "Busiest 25%", data: pick(F.q4_neighborhood, "busiest"), color: KBYR.violet},
-  {label: "Quietest 25%", data: pick(F.q4_neighborhood, "quietest"), color: KBYR.grey}], {format: "pct", labelHeader: "Problem"});
+butaChart("q1", "bar", TYPES, [
+  {label: "Had it in 2022–23", data: pick(F.q1_history, "had"), color: PALETTE.teal},
+  {label: "Didn't", data: pick(F.q1_history, "not"), color: PALETTE.grey}], {format: "pct", labelHeader: "Problem"});
+butaChart("q2", "bar", TYPES, [
+  {label: "Worst 25% of landlords", data: pick(F.q2_landlord_quartiles, "worst"), color: PALETTE.teal},
+  {label: "Best 25%", data: pick(F.q2_landlord_quartiles, "best"), color: PALETTE.grey}], {format: "pct", labelHeader: "Problem"});
+butaChart("q2n", "bar", TYPES, [
+  {label: "Same landlord", data: pick(F.q2_neighbors, "same"), color: PALETTE.teal},
+  {label: "Different landlord", data: pick(F.q2_neighbors, "different"), color: PALETTE.grey}], {format: "pct", labelHeader: "Problem"});
+butaChart("q3", "line", F.q3_era.eras,
+  TYPES.map(t => ({label: t, data: F.q3_era.series[t], color: PALETTE.typeColors[t], points: true})), {format: "pct", labelHeader: "Built"});
+butaChart("q4", "bar", TYPES, [
+  {label: "Busiest 25%", data: pick(F.q4_neighborhood, "busiest"), color: PALETTE.teal},
+  {label: "Quietest 25%", data: pick(F.q4_neighborhood, "quietest"), color: PALETTE.grey}], {format: "pct", labelHeader: "Problem"});
 
 // ---- Model
 const M = I.model;
 // Dot plot (not bars): the axis starts at 0.5, so the marks are points
-kbyrChart("auc", "line", TYPES, [
-  {label: "Gradient boosting", data: pick(M.performance, "auc_gbm"), color: KBYR.violet, points: true, showLine: false, pointRadius: 7},
-  {label: "Logistic regression", data: pick(M.performance, "auc_logit"), color: KBYR.blue, points: true, showLine: false, pointRadius: 6},
-  {label: "Baseline: happened before", data: pick(M.performance, "auc_baseline"), color: KBYR.grey, points: true, showLine: false, pointRadius: 6},
+butaChart("auc", "line", TYPES, [
+  {label: "Gradient boosting", data: pick(M.performance, "auc_gbm"), color: PALETTE.teal, points: true, showLine: false, pointRadius: 7},
+  {label: "Logistic regression", data: pick(M.performance, "auc_logit"), color: PALETTE.orange, points: true, showLine: false, pointRadius: 6},
+  {label: "Baseline: happened before", data: pick(M.performance, "auc_baseline"), color: PALETTE.grey, points: true, showLine: false, pointRadius: 6},
 ], {format: "dec", yMin: 0.5, yMax: 1, labelHeader: "Problem"});
-kbyrChart("ablation", "line", M.ablation.steps.map((s, i) => (i ? "+ " : "") + s),
-  TYPES.map(t => ({label: t, data: M.ablation.series[t], color: KBYR.typeColors[t], points: true})),
+butaChart("ablation", "line", M.ablation.steps.map((s, i) => (i ? "+ " : "") + s),
+  TYPES.map(t => ({label: t, data: M.ablation.series[t], color: PALETTE.typeColors[t], points: true})),
   {format: "dec", yMin: 0.8, yMax: 0.95, labelHeader: "Inputs"});
-kbyrChart("levels", "bar", TYPES, ["Low", "Medium", "High"].map((k, i) => (
-  {label: k + " risk", data: pick(M.risk_levels, k), color: KBYR.ordinal[i]})), {format: "pct", labelHeader: "Problem"});
+butaChart("levels", "bar", TYPES, ["Low", "Medium", "High"].map((k, i) => (
+  {label: k + " risk", data: pick(M.risk_levels, k), color: PALETTE.ordinal[i]})), {format: "pct", labelHeader: "Problem"});
 
 function drawCalibration(t) {
   const c = M.calibration[t];
-  kbyrChart("calibration", "line", c.pred.map((_, i) => "Band " + (i + 1)), [
-    {label: "Predicted", data: c.pred, color: KBYR.grey, points: true, borderDash: [6, 4]},
-    {label: "Observed in 2025", data: c.obs, color: KBYR.violet, points: true},
+  butaChart("calibration", "line", c.pred.map((_, i) => "Band " + (i + 1)), [
+    {label: "Predicted", data: c.pred, color: PALETTE.grey, points: true, borderDash: [6, 4]},
+    {label: "Observed in 2025", data: c.obs, color: PALETTE.teal, points: true},
   ], {format: "pct", labelHeader: "Band (low → high predicted)"});
 }
 const sel = document.getElementById("calibType");
