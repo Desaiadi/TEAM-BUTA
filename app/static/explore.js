@@ -1,5 +1,5 @@
 /* BUTA Explore: pick one or two NYC buildings on the map, then see what to
- * expect inside them next year and what gets reported on the street around them.
+ * expect inside them over the next four months and what gets reported on the street around them.
  *
  *   Map      MapLibre with the BUTA style, 2D/3D switch, draggable A/B pins and
  *            the radius circles - the original "Across the street" map.
@@ -327,14 +327,16 @@
     return 'Other';
   }
 
-  function summarize(rows) {
+  function summarize(rows, cutoff) {
+    const end = new Date(cutoff + 'T00:00:00').getTime();
     const counts = Object.fromEntries(CATS.map((c) => [c, 0]));
     let open = 0;
     const hours = [];
     for (const r of rows) {
       counts[category(r)]++;
-      if ((r.status || '').toLowerCase() !== 'closed') open++;
-      if (r.closed_date && r.created_date) {
+      const closed = r.closed_date ? new Date(r.closed_date).getTime() : NaN;
+      if (!Number.isFinite(closed) || closed >= end) open++;
+      if (Number.isFinite(closed) && closed < end && r.created_date) {
         const h = (new Date(r.closed_date) - new Date(r.created_date)) / 36e5;
         if (h >= 0 && Number.isFinite(h)) hours.push(h);
       }
@@ -368,7 +370,7 @@
       offset += size;
       if (offset >= 100000) throw new Error('This area has too many reports. Choose a smaller radius or shorter period.');
     }
-    return summarize(rows);
+    return summarize(rows, end);
   }
 
   const dateOnly = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -394,9 +396,9 @@
       ? 'Loading the building report and the live 311 reports around it…'
       : 'Loading both building reports and the live 311 reports around them…';
 
-    const end = dateOnly(new Date()), s = new Date(end + 'T12:00:00');
+    const end = CFG.studyEndExclusive, s = new Date(end + 'T12:00:00');
     s.setDate(s.getDate() - Number($('period').value));
-    const start = dateOnly(s), radius = Number($('radius').value);
+    const start = [dateOnly(s), CFG.studyStart].sort().at(-1), radius = Number($('radius').value);
     const points = structuredClone(state.points);
     const timer = setTimeout(() => controller.abort(), 90000);
     try {
@@ -416,7 +418,7 @@
       render();
       const streetOk = ks.every((k) => !street[k].error);
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      $('status').textContent = (CFG.dataReady ? 'Building predictions for the next 12 months · ' : '')
+      $('status').textContent = (CFG.dataReady ? 'Building predictions for the November 2026–February 2027 · ' : '')
         + (streetOk ? `Live NYC 311 · ${start} through ${end} (end exclusive) · ${radius} m radius` : 'Live 311 data unavailable')
         + ` · Fetched ${time}.`;
       $('export').disabled = false;
@@ -483,7 +485,7 @@
         ${who ? `<p class="small">${who}</p>` : ''}
         <div class="bhead-stats">
           <div><strong>${pct(top.prob)}</strong><span>top risk: ${esc(shortLabel(top.label).toLowerCase())}</span></div>
-          <div><strong>${b.complaints_2y}</strong><span>housing complaints, last 2 years</span></div>
+          <div><strong>${b.complaints_6m}</strong><span>housing complaints, last 6 months</span></div>
           <div><strong>${b.open_violations}</strong><span>open violations</span></div>
         </div>
         <a class="bhead-link" href="${esc(B.url)}">Open the full report ↗</a>`);
@@ -578,10 +580,10 @@
       ? `<ul class="flags">${b.flags.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>`
       : '<p>No open serious violations, recent bedbugs or evictions on record.</p>';
     return `<div class="card"><h2>${heading}</h2>${list}
-      <p class="muted small">${b.complaints_2y} housing complaints in the last 2 years · ${b.open_violations} open violations of any class.</p></div>`;
+      <p class="muted small">${b.complaints_6m} housing complaints in the last 6 months · ${b.open_violations} open violations of any class.</p></div>`;
   }
 
-  const HISTORY_NOTE = (C) => `Tenant complaints to HPD per year, by problem type. *${C.years.at(-1).replace('*', '')} is the year so far.`;
+  const HISTORY_NOTE = () => 'Tenant complaints to HPD by problem type. Each year includes January–October only.';
   const VIOLATION_NOTE = 'Violations inspectors confirmed per year: A non-hazardous, B hazardous, C immediately hazardous.';
 
   function drawHistory(id, C, yMax) {
@@ -609,18 +611,18 @@
     const b = B.report, C = B.charts;
     const hasLandlord = b.portfolio > 1;
     box.innerHTML = `
-      <section>${chartCard('cRisk', 'This building vs a typical building', 'Predicted chance of each problem next year, against the share of all apartment buildings that had it in 2025.')}</section>
+      <section>${chartCard('cRisk', 'This building vs a typical building', 'Predicted chance of each problem over the next four months, against the share of all apartment buildings that had it in July–October 2026.')}</section>
       <section class="two-col">
         ${chartCard('cHist', 'Complaint history', HISTORY_NOTE(C))}
         ${chartCard('cViol', 'Violations issued', VIOLATION_NOTE)}
       </section>
       <section class="two-col">
-        ${flagsCard(b, 'Red flags right now')}
+        ${flagsCard(b, 'Recorded flags in the study data')}
         ${hasLandlord
-          ? chartCard('cLandlord', "The landlord's other buildings", 'Complaints per 100 apartments over the last 2 years, in the landlord\'s other buildings vs all NYC apartment buildings.')
+          ? chartCard('cLandlord', "The landlord's other buildings", 'Complaints per 100 apartments over the last 6 months, in the landlord\'s other buildings vs all NYC apartment buildings.')
           : '<div class="card"><h2>The landlord\'s other buildings</h2><p class="muted">This landlord has no other registered buildings to compare.</p></div>'}
       </section>
-      ${C.crime.labels.length ? `<section>${chartCard('cCrime', 'Reported crime within 200 m', 'Crimes per year reported to the NYPD, 2025–26, located at the nearest street segment. Reporting also reflects policing patterns; shown as context only.', 220)}</section>` : ''}`;
+      ${C.crime.labels.length ? `<section>${chartCard('cCrime', 'Reported crime within 200 m', 'Annualized reported crimes within the forecast history; source coverage ends September 2026, located at the nearest street segment. Reporting also reflects policing patterns; shown as context only.', 220)}</section>` : ''}`;
 
     butaChart('cRisk', 'bar', C.risk.labels, [
       { label: 'This building', data: C.risk.building, color: PALETTE.teal },
@@ -657,7 +659,7 @@
     const tag = (k, b) => `${pinDot(k)}${esc(b.address)}`;
 
     box.innerHTML = `
-      <section>${chartCard('cRisk', 'Building A vs building B vs a typical building', 'Predicted chance of each problem next year. Grey is the share of all apartment buildings that had it in 2025.', 340)}</section>
+      <section>${chartCard('cRisk', 'Building A vs building B vs a typical building', 'Predicted chance of each problem over the next four months. Grey is the share of all apartment buildings that had it in July–October 2026.', 340)}</section>
       <h2 class="section-title">Complaint and violation history</h2>
       <p class="muted small">Both buildings share one scale, so taller bars mean more complaints.</p>
       <section class="two-col">
@@ -669,13 +671,13 @@
         ${chartCard('cViolB', `${pinDot(kB)}Violations issued`, VIOLATION_NOTE)}
       </section>
       <section class="two-col">
-        ${flagsCard(A, `${pinDot(kA)}Red flags right now`)}
-        ${flagsCard(B, `${pinDot(kB)}Red flags right now`)}
+        ${flagsCard(A, `${pinDot(kA)}Recorded flags in the study data`)}
+        ${flagsCard(B, `${pinDot(kB)}Recorded flags in the study data`)}
       </section>
       <section>${chartCard('cLandlord', "The landlords' other buildings",
-        'Complaints per 100 apartments over the last 2 years, in each landlord\'s other buildings vs all NYC apartment buildings.'
+        'Complaints per 100 apartments over the last 6 months, in each landlord\'s other buildings vs all NYC apartment buildings.'
         + (noLandlord.length ? ` Building ${noLandlord.join(' and ')}'s landlord has no other registered buildings, so it has no bars.` : ''))}</section>
-      ${crimeLabels.length ? `<section>${chartCard('cCrime', 'Reported crime within 200 m', 'Crimes per year reported to the NYPD, 2025–26. Reporting also reflects policing patterns; shown as context only.', 240)}</section>` : ''}`;
+      ${crimeLabels.length ? `<section>${chartCard('cCrime', 'Reported crime within 200 m', 'Annualized reported crimes within the forecast history; source coverage ends September 2026. Reporting also reflects policing patterns; shown as context only.', 240)}</section>` : ''}`;
 
     butaChart('cRisk', 'bar', types.map((t) => shortLabel(ra[t].label)), [
       { label: `Building ${kA}`, data: types.map((t) => ra[t].prob), color: PALETTE.teal },
@@ -726,7 +728,7 @@
       <div class="metrics">
         ${metric('REPORTED PROBLEMS', (x) => x.total.toLocaleString(), `311 requests within ${R.radius} m`)}
         ${metric('MEDIAN CLOSURE TIME', (x) => fmtH(x.median), closure)}
-        ${metric('STILL OPEN', openPct, 'Share not marked closed')}
+        ${metric('NO RECORDED CLOSURE', openPct, 'Share without closure by the study cutoff')}
       </div>
       <div class="detailgrid${two ? '' : ' single'}">
         <article class="breakdown">
@@ -799,8 +801,8 @@
       ['BBL', ...col((k) => R.points[k].bbl)],
       ['Latitude', ...col((k) => R.points[k].lat)],
       ['Longitude', ...col((k) => R.points[k].lng)],
-      ...CFG.types.map((t) => [`Predicted chance next year: ${t}`, ...col((k) => B(k)?.risks.find((r) => r.type === t)?.prob)]),
-      ['Housing complaints, last 2 years', ...col((k) => B(k)?.complaints_2y)],
+      ...CFG.types.map((t) => [`Predicted chance over the next four months: ${t}`, ...col((k) => B(k)?.risks.find((r) => r.type === t)?.prob)]),
+      ['Housing complaints, last 6 months', ...col((k) => B(k)?.complaints_6m)],
       ['Open violations', ...col((k) => B(k)?.open_violations)],
       ['Red flags', ...col((k) => B(k)?.flags.join('; '))],
       ['311 total requests', ...col((k) => S(k)?.total)],

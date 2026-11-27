@@ -23,7 +23,7 @@
 </section>
 
 <section>
-  <h2>What to expect next year</h2>
+  <h2>Forecast for November 2026–February 2027</h2>
   <div class="risk-grid">
     {% for r in b.risks %}
     <article class="risk risk-{{ r.level|lower }}">
@@ -34,19 +34,20 @@
     </article>
     {% endfor %}
   </div>
-  <p class="muted small">Chance of at least one tenant complaint of that type in the next 12 months. The model was trained on 2023–24 history and checked on 2025 outcomes (AUC 0.89–0.93).</p>
+  <p class="muted small">Chance of at least one tenant complaint of that type during November 2026–February 2027. The model was trained on six-month history windows and evaluated on July–October 2026 outcomes; see Insights for measured accuracy.</p>
+  <p class="muted small">The forecast covers a different season from the evaluation period. Its accuracy for November–February has not yet been measured.</p>
 </section>
 
 <section class="card">
   <h2>This building vs a typical building</h2>
-  <p class="muted small">Predicted chance of each problem next year, against the share of all apartment buildings that had it in 2025.</p>
+  <p class="muted small">Predicted chance of each problem during November 2026–February 2027, against the share of all apartment buildings that had it in July–October 2026.</p>
   <div class="chart" style="height:300px"><canvas id="riskChart" role="img" aria-label="Predicted chance of each problem for this building versus a typical building"></canvas></div>
 </section>
 
 <section class="two-col">
   <div class="card">
     <h2>Complaint history</h2>
-    <p class="muted small">Tenant complaints to HPD per year, by problem type. *{{ charts.years[-1][:-1] }} is the year so far.</p>
+    <p class="muted small">Tenant complaints to HPD per year, by problem type. Each year shows January–October only.</p>
     <div class="chart" style="height:300px"><canvas id="historyChart" role="img" aria-label="Complaints per year by problem type"></canvas></div>
   </div>
   <div class="card">
@@ -58,15 +59,15 @@
 
 <section class="two-col">
   <div class="card">
-    <h2>Red flags right now</h2>
+    <h2>Recorded flags in the study data</h2>
     {% if b.flags %}<ul class="flags">{% for f in b.flags %}<li>{{ f }}</li>{% endfor %}</ul>
     {% else %}<p>No open serious violations, recent bedbugs or evictions on record.</p>{% endif %}
-    <p class="muted small">{{ b.complaints_2y }} housing complaints in the last 2 years · {{ b.open_violations }} open violations of any class.</p>
+    <p class="muted small">{{ b.complaints_6m }} housing complaints in the last 6 months · {{ b.open_violations }} open violations of any class.</p>
   </div>
   <div class="card">
     <h2>The landlord's other buildings</h2>
     {% if b.portfolio > 1 %}
-    <p class="muted small">Complaints per 100 apartments over the last 2 years, in the landlord's other buildings vs all NYC apartment buildings.</p>
+    <p class="muted small">Complaints per 100 apartments over the last 6 months, in the landlord's other buildings vs all NYC apartment buildings.</p>
     <div class="chart" style="height:300px"><canvas id="landlordChart" role="img" aria-label="Landlord's complaint rates versus NYC by problem type"></canvas></div>
     {% else %}<p class="muted">This landlord has no other registered buildings to compare.</p>{% endif %}
   </div>
@@ -74,7 +75,7 @@
 
 {% if b.crime %}
 <section class="card">
-  <h2>Reported crime within 200 m <span class="muted small">(per year, 2025–26)</span></h2>
+  <h2>Reported crime within 200 m <span class="muted small">(annualized; {{ b.crime_period }})</span></h2>
   <div class="chart" style="height:220px"><canvas id="crimeChart" role="img" aria-label="Reported crime near this building versus the median NYC building"></canvas></div>
   <p class="muted small">Crimes reported to the NYPD, located at the nearest street segment. Reporting also reflects policing patterns; shown as context only.</p>
 </section>

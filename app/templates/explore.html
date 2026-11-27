@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}BUTA | Know the building, know the block{% endblock %}
-{% block description %}Pick one or two NYC buildings on the map and see what to expect inside them next year, and what gets reported on the street around them.{% endblock %}
+{% block description %}Pick one or two NYC buildings on the map and see what to expect inside them over the next four months, and what gets reported on the street around them.{% endblock %}
 
 {% block head %}
 {% include "_chartlibs.html" %}
@@ -15,7 +15,7 @@
     <span class="eyebrow">SAME CITY. DIFFERENT EVERYDAY.</span>
     <h1>A better home starts<br>with a closer look<span>.</span></h1>
     <p>Pick a building, or two a few streets apart. See what to expect inside them<br class="desktop">
-      next year, and what gets reported on the street around them.</p>
+      over the next four months, and what gets reported on the street around them.</p>
   </div>
   <div class="intro-note">
     <span class="lineicon">⌖</span>
@@ -76,21 +76,25 @@
       </label>
       <label>311 time period
         <select id="period">
-          <option value="30">Last 30 days</option>
-          <option value="90" selected>Last 90 days</option>
-          <option value="365">Last 12 months</option>
+          <option value="30">Final 30 study days</option>
+          <option value="90" selected>Final 90 study days</option>
+          <option value="365">Final 12 study months</option>
         </select>
       </label>
     </div>
 
     <button type="button" class="primary" id="check">Check these buildings</button>
-    <p class="note-center">Same model. Same radius. Same time period.</p>
+    <p class="note-center">Same model. Same radius. Same time period. Ending {{ study_end }}.</p>
 
     {% if not data_ready %}
     <div class="notice aside-notice">
       {% if reason == "deps" %}
       <strong>Building reports are off.</strong> Install the analysis stack with
       <code>pip install -r requirements.txt</code>, build the data (see the README) and restart.
+      {% elif reason == "study" %}
+      <strong>Building reports use an older study window.</strong> Rebuild
+      <code>python -m src.features_housing</code>, <code>python -m src.app_data</code>
+      and <code>python -m src.insights</code>, then restart.
       {% else %}
       <strong>Building reports aren't built yet.</strong> Run
       <code>python -m src.app_data</code> and <code>python -m src.insights</code>, then restart.
@@ -133,9 +137,9 @@
     <div id="bheads" class="bheads"></div>
 
     <section id="expectSection">
-      <h2 class="section-title">What to expect next year</h2>
-      <p class="muted small">Chance of at least one tenant complaint of each type in the next 12 months.
-        The models were trained on 2023–24 history and checked on 2025 outcomes (AUC 0.89–0.93).</p>
+      <h2 class="section-title">What to expect over the next four months</h2>
+      <p class="muted small">Chance of at least one tenant complaint of each type in the four-month forecast period.
+        Six-month histories predict four-month outcomes; evaluation uses July–October 2026. The November 2026–February 2027 forecast season has not yet been evaluated.</p>
       <p class="expect-lead" id="expectLead"></p>
       <div id="expect"></div>
     </section>
@@ -160,9 +164,9 @@
   </div>
   <div>
     <h3>Predictions for the building</h3>
-    <p>"What to expect next year" comes from one model per problem type, trained on every NYC apartment building with 3+ units: its HPD complaint and violation history, its landlord's other buildings, its neighbours within 100 m, bedbug filings, evictions and nearby crime. A click on the map picks the nearest of those buildings within 150 m.</p>
+    <p>"What to expect over the next four months" comes from one model per problem type, trained on every NYC apartment building with 3+ units: its HPD complaint and violation history, its landlord's other buildings, its neighbours within 100 m, bedbug filings, evictions and nearby crime. A click on the map picks the nearest of those buildings within 150 m.</p>
     <h3>Real reports, consistent boundaries</h3>
-    <p>"Around the block" queries NYC 311 requests live, within the selected radius of each pin and the same rolling time window. Counts include only geocoded requests. Overlapping circles can include the same requests.</p>
+    <p>"Around the block" queries NYC 311 requests live, within the selected radius of each pin and the same lookback ending {{ study_end }}. Closure summaries use only closure dates recorded before the study cutoff; category fields remain downloaded snapshots. Counts include only geocoded requests. Overlapping circles can include the same requests.</p>
     <h3>A transparent recommendation</h3>
     <p>The balanced view compares total requests. A chosen priority compares that category only. A minimum of 20 combined reports and a 10% difference are needed to suggest a lower-reporting location. These are simple display rules, not statistical significance tests.</p>
     <h3>Reports are only part of the story</h3>
@@ -177,6 +181,9 @@
   window.BUTA = {
     styleUrl: {{ url_for('static', filename='vendor/map-style.json')|tojson }},
     dataReady: {{ data_ready|tojson }},
+    studyStart: {{ study_start|tojson }},
+    studyEnd: {{ study_end|tojson }},
+    studyEndExclusive: {{ study_end_exclusive|tojson }},
     types: {{ type_order|tojson }},
     api: {
       nearest: {{ url_for('api_nearest')|tojson }},

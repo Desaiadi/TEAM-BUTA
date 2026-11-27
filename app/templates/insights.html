@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Data &amp; model insights · BUTA{% endblock %}
-{% block description %}What the NYC datasets show, what explains differences between buildings, and how well the models predict next year's problems.{% endblock %}
+{% block description %}What the NYC datasets show, what explains differences between buildings, and how well the models predict problems over four months.{% endblock %}
 {% block head %}{% include "_chartlibs.html" %}{% endblock %}
 {% block content %}
 <div class="page">
 <section class="hero" style="padding-top:28px;">
   <span class="eyebrow dark">BEHIND THE MODEL</span>
   <h1>Data &amp; model insights</h1>
-  <p>What the datasets show, what explains differences between buildings, and how well the models predict next year's problems.</p>
+  <p>What the datasets show, what explains differences between buildings, and how well the models predict problems over the next four months.</p>
   <nav class="jump">
     <a href="#data">Datasets</a><a href="#findings">Findings</a><a href="#model">Model</a>
   </nav>
@@ -31,7 +31,7 @@
     <tr><td>{{ d.dataset }}</td><td>{{ "{:,}".format(d.raw_rows) }}</td><td>{{ "{:,}".format(d.clean_rows) if d.clean_rows else "–" }}</td><td>{{ d.provides }}</td></tr>
     {% endfor %}
   </table></div>
-  <p class="muted small">Registrations clean to one landlord row per building; 311 was profiled in full and used in our first, scrapped idea.</p>
+  <p class="muted small">Registrations clean to one landlord row per building; 311 closure-time models use a separate selected-day sample within January 2025–October 2026. Building traits, ownership and status fields are downloaded snapshots, not reconstructed historical records.</p>
 </section>
 
 <section class="card">
@@ -43,7 +43,7 @@
 <section class="two-col">
   <div class="card">
     <h2>Violations per year, by severity</h2>
-    <p class="muted small">A non-hazardous · B hazardous · C immediately hazardous. {{ ins.trends.violations_yearly.years[-1] }} is the year so far.</p>
+    <p class="muted small">A non-hazardous · B hazardous · C immediately hazardous. Each year includes January–October only.</p>
     <div class="chart" style="height:280px"><canvas id="violationsYearly" role="img" aria-label="Violations per year by class"></canvas></div>
   </div>
   <div class="card">
@@ -56,7 +56,7 @@
 <section class="two-col">
   <div class="card">
     <h2>Reported crime per month</h2>
-    <p class="muted small">NYPD complaints with valid coordinates.</p>
+    <p class="muted small">NYPD complaints with valid coordinates. Last available event: {{ ins.coverage.crime.last_event }}. Missing source months are not counted as zero.</p>
     <div class="chart" style="height:260px"><canvas id="crimeMonthly" role="img" aria-label="Reported crime per month"></canvas></div>
   </div>
   <div class="card">
@@ -68,13 +68,13 @@
 
 <!-- ============================================================ FINDINGS -->
 <h2 id="findings" class="section-title">2 · What explains the differences</h2>
-<p class="muted">History from 2022–23, outcome in 2024: the share of buildings with at least one complaint of each type.</p>
+<p class="muted">History from January–June 2025, outcome in July–October 2025: the share of buildings with at least one complaint of each type.</p>
 
 <section class="two-col">
   <div class="card">
     <h2>Q1 · Problems repeat</h2>
-    <p class="muted small">Buildings that had the problem in 2022–23 vs those that didn't.</p>
-    <div class="chart" style="height:320px"><canvas id="q1" role="img" aria-label="Share with each problem in 2024 by whether the building had it before"></canvas></div>
+    <p class="muted small">Buildings that had the problem in January–June 2025 vs those that didn't.</p>
+    <div class="chart" style="height:320px"><canvas id="q1" role="img" aria-label="Share with each problem in July–October 2025 by whether the building had it before"></canvas></div>
   </div>
   <div class="card">
     <h2>Q2 · The landlord matters</h2>
@@ -85,14 +85,14 @@
 
 <section class="card">
   <h2>Q2 · Neighbors within 100 m: same landlord, same problems</h2>
-  <p class="muted small">Similar buildings (same era and size) within 100 m, 2025. When one had the problem, how often did its neighbor too?</p>
+  <p class="muted small">Similar buildings (same era and size) within 100 m, July–October 2026. When one had the problem, how often did its neighbor too?</p>
   <div class="chart" style="height:300px"><canvas id="q2n" role="img" aria-label="Co-occurrence of problems in neighboring buildings by landlord"></canvas></div>
 </section>
 
 <section class="two-col">
   <div class="card">
     <h2>Q3 · Building age</h2>
-    <p class="muted small">Share with each problem in 2024, by the era the building was built.</p>
+    <p class="muted small">Share with each problem in July–October 2025, by the era the building was built.</p>
     <div class="chart" style="height:320px"><canvas id="q3" role="img" aria-label="Share with each problem by building era"></canvas></div>
   </div>
   <div class="card">
@@ -104,10 +104,10 @@
 
 <!-- ============================================================ MODEL -->
 <h2 id="model" class="section-title">3 · The model</h2>
-<p class="muted">One model per problem type. Trained on {{ "{:,}".format(m.n_train) }} buildings with 2022–23 history and 2024 outcomes, then tested on 2025, a year it never saw.</p>
+<p class="muted">One model per problem type. Trained on {{ "{:,}".format(m.n_train) }} buildings with January–June 2025 history and July–October 2025 outcomes, then tested on the matching 2026 windows.</p>
 
 <section class="card">
-  <h2>Accuracy: gradient boosting beats the baseline for every problem</h2>
+  <h2>Accuracy by model and problem</h2>
   <p class="muted small">Test AUC (0.5 = coin flip, 1 = perfect). Baseline: "it happens again if it happened before".</p>
   <div class="chart" style="height:320px"><canvas id="auc" role="img" aria-label="Test AUC by model and problem type"></canvas></div>
 </section>
@@ -115,12 +115,12 @@
 <section class="two-col">
   <div class="card">
     <h2>What drives accuracy</h2>
-    <p class="muted small">Test AUC as each group of inputs is added. Own history gives the big jump.</p>
+    <p class="muted small">Test AUC as each group of inputs is added. Each step is fitted again using the same time windows.</p>
     <div class="chart" style="height:320px"><canvas id="ablation" role="img" aria-label="Test AUC as feature groups are added"></canvas></div>
   </div>
   <div class="card">
     <h2>Do risk levels hold up?</h2>
-    <p class="muted small">Share of buildings that actually had the problem in 2025, by the risk level the model gave them.</p>
+    <p class="muted small">Share of buildings that actually had the problem in July–October 2026, by the risk level the model gave them.</p>
     <div class="chart" style="height:320px"><canvas id="levels" role="img" aria-label="Observed problem rate by predicted risk level"></canvas></div>
   </div>
 </section>
@@ -132,7 +132,7 @@
       <select id="calibType">{% for t in type_order %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select>
     </label>
   </div>
-  <p class="muted small">Buildings grouped into ten bands by predicted probability: predicted vs observed rate in 2025. Close lines mean the percentages can be taken at face value.</p>
+  <p class="muted small">Buildings grouped into ten bands by predicted probability: predicted vs observed rate in July–October 2026. Close lines mean the percentages can be taken at face value.</p>
   <div class="chart" style="height:300px"><canvas id="calibration" role="img" aria-label="Predicted versus observed problem rate by decile"></canvas></div>
 </section>
 </div>
@@ -163,7 +163,7 @@ butaChart("evictionsMonthly", "line", I.trends.evictions_monthly.months,
 // ---- Findings
 const F = I.findings;
 butaChart("q1", "bar", TYPES, [
-  {label: "Had it in 2022–23", data: pick(F.q1_history, "had"), color: PALETTE.teal},
+  {label: "Had it in January–June 2025", data: pick(F.q1_history, "had"), color: PALETTE.teal},
   {label: "Didn't", data: pick(F.q1_history, "not"), color: PALETTE.grey}], {format: "pct", labelHeader: "Problem"});
 butaChart("q2", "bar", TYPES, [
   {label: "Worst 25% of landlords", data: pick(F.q2_landlord_quartiles, "worst"), color: PALETTE.teal},
@@ -187,7 +187,7 @@ butaChart("auc", "line", TYPES, [
 ], {format: "dec", yMin: 0.5, yMax: 1, labelHeader: "Problem"});
 butaChart("ablation", "line", M.ablation.steps.map((s, i) => (i ? "+ " : "") + s),
   TYPES.map(t => ({label: t, data: M.ablation.series[t], color: PALETTE.typeColors[t], points: true})),
-  {format: "dec", yMin: 0.8, yMax: 0.95, labelHeader: "Inputs"});
+  {format: "dec", yMin: 0.5, yMax: 1, labelHeader: "Inputs"});
 butaChart("levels", "bar", TYPES, ["Low", "Medium", "High"].map((k, i) => (
   {label: k + " risk", data: pick(M.risk_levels, k), color: PALETTE.ordinal[i]})), {format: "pct", labelHeader: "Problem"});
 

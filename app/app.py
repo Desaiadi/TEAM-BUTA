@@ -1,7 +1,7 @@
 """Team BUTA: the Flask app.
 
 * ``/``                 Explore. Pick one building or two on the 3D map. "Check"
-                        shows what to expect inside each building next year (the
+                        shows what to expect inside each building over four months (the
                         model's predictions, red flags, history, landlord, crime)
                         and the live 311 picture on the street around it.
 * ``/building/<bbl>``   The full report for one building, as a page of its own.
@@ -40,6 +40,8 @@ from flask import Flask, abort, jsonify, redirect, render_template, request, url
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+from src import config  # lightweight configuration also used by the map-only view
 
 log = logging.getLogger(__name__)
 app = Flask(__name__)
@@ -83,6 +85,12 @@ def load_buildings() -> SimpleNamespace | None:
                     len(missing), missing[0])
         return None
 
+    study_file = config.PROCESSED_DIR / "study.json"
+    if not study_file.exists() or json.loads(study_file.read_text()).get("study_id") != config.STUDY_ID:
+        DATA_STATUS = "study"
+        log.warning("building data disabled: rebuild the configured study window")
+        return None
+
     try:
         buildings = pd.read_parquet(APP_FILE)
         # Every spelling of every building's address (PLUTO + HPD registration ranges)
@@ -91,6 +99,14 @@ def load_buildings() -> SimpleNamespace | None:
     except ImportError as exc:                 # pandas needs pyarrow to read parquet
         DATA_STATUS = "deps"
         log.warning("building data disabled, cannot read parquet: %s", exc)
+        return None
+
+    insights_data = json.loads(INSIGHTS_FILE.read_text())
+    if ("history_start" not in buildings or
+            not buildings["history_start"].eq(config.HOUSING_WINDOWS["forecast"][0]).all() or
+            insights_data.get("study", {}).get("study_id") != config.STUDY_ID):
+        DATA_STATUS = "study"
+        log.warning("building data disabled: rebuild app_data and insights for this study")
         return None
 
     buildings["zipcode"] = buildings["zipcode"].astype("string")
@@ -112,9 +128,10 @@ def load_buildings() -> SimpleNamespace | None:
             # (the same scale as the landlord rates)
             "ll_rate": {t: buildings[f"c_{slug(t)}"].sum() / units * 100 for t in TARGET_TYPES},
             "crime": {c[6:]: float(buildings[c].median())
-                      for c in buildings.columns if c.startswith("crime_")},
+                      for c in buildings.columns if c.startswith("crime_")
+                      and pd.api.types.is_numeric_dtype(buildings[c]) and c != "crime_exposure_fraction"},
         },
-        insights=json.loads(INSIGHTS_FILE.read_text()),   # built by `python -m src.insights`
+        insights=insights_data,   # built by `python -m src.insights`
         history=history,
         history_years=sorted(history["year"].unique().tolist()),
         # Kept so the routes don't need the heavy imports themselves
@@ -135,7 +152,7 @@ def building_charts(bbl: str, data: dict) -> dict:
              .reindex(years).fillna(0))
     col = lambda name: [int(x) for x in table[name]] if name in table else [0] * len(years)
     return {
-        "years": [str(y) + ("*" if y == years[-1] else "") for y in years],
+        "years": [str(y) + " Jan–Oct" for y in years],
         "complaints": {t: col(t) for t in D.target_types},
         "violations": {k: col(f"class {k}") for k in "ABC"},
         "risk": {"labels": [r["label"].split(" (")[0] for r in data["risks"]],
@@ -200,7 +217,9 @@ def jsonable(x):
 def index():
     """Explore: one or two buildings on the map, their reports, and the street around them."""
     return render_template("explore.html", data_ready=D is not None, reason=DATA_STATUS,
-                           type_order=D.target_types if D is not None else [])
+                           type_order=D.target_types if D is not None else [],
+                           study_start=config.STUDY_START_DATE, study_end=config.STUDY_END_DATE,
+                           study_end_exclusive=config.STUDY_END_EXCLUSIVE)
 
 
 @app.get("/building/<bbl>")
