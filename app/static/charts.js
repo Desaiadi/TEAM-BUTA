@@ -40,7 +40,7 @@ const fmt = {
 };
 
 /** Build a chart in the <canvas id=…> and a table view in the <details> after it.
- *  kind: "bar" | "line"; opts: {stacked, horizontal, format, yTitle, yMin, yMax, legend} */
+ *  kind: "bar" | "line"; opts: {stacked, horizontal, format, yTitle, yMin, yMax, legend, tickEvery} */
 function butaChart(id, kind, labels, datasets, opts = {}) {
   const el = document.getElementById(id);
   if (!el) return null;
@@ -54,7 +54,11 @@ function butaChart(id, kind, labels, datasets, opts = {}) {
     title: opts.yTitle ? { display: true, text: opts.yTitle, color: PALETTE.muted } : undefined,
   };
   const catAxis = { stacked: !!opts.stacked, grid: { display: false }, border: { color: PALETTE.grid },
-                    ticks: { color: PALETTE.ink, autoSkip: labels.length > 12, maxRotation: labels.length > 12 ? 0 : 40 } };
+                    ticks: { color: PALETTE.ink, autoSkip: !opts.tickEvery && labels.length > 12,
+                             maxRotation: labels.length > 12 ? 0 : 40,
+                             // tickEvery: n labels every n-th category, plus the last one. Only set when
+                             // asked: an explicit `callback: undefined` would replace Chart.js's labels with indices.
+                             ...(opts.tickEvery && { callback: (v, i) => (i % opts.tickEvery === 0 || i === labels.length - 1 ? labels[i] : null) }) } };
   const ds = datasets.map((d) => kind === "bar"
     ? { borderRadius: opts.stacked ? 0 : 4, borderSkipped: "start", borderColor: "#ffffff",
         borderWidth: opts.stacked ? { top: 2 } : 0, maxBarThickness: opts.horizontal ? 18 : 28,

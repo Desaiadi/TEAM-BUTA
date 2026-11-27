@@ -37,6 +37,12 @@ are not fully matured 90-day evaluation cohorts.
   average precision and Brier score.
 - 311: linear regression, decision tree, random forest and histogram gradient
   boosting regression. Compare MAE, median absolute error and RMSE in hours.
+- Street noise & sanitation (no model): 311 noise and sanitation complaints
+  within 100, 200 or 500 m of each apartment building, ranked against the other apartment
+  buildings in its community district. On a 100 m grid it asks whether streets
+  differ more within districts than between them, whether neighboring cells are
+  alike, when complaints happen, and whether 2025 hotspots stay hotspots in 2026.
+  It also writes a plain-English comparison of two buildings (`src/street.py`).
 - Building features: complaint and violation history, latest annual bedbug filings available
   before the feature cutoff (restricted to study-period filings), evictions, landlord leave-one-out rates, neighbors
   within 100 m, and annualized crime counts within 200 m.
@@ -58,6 +64,12 @@ lookback ending October 31, 2026, within the shared study window. Map tiles and
 geocoding require internet access. These descriptive street summaries are
 separate from the trained closure-hour models.
 
+"How loud, how clean, and when" adds context the live counts cannot give: for
+each pin, how its noise and sanitation complaints within the chosen radius rank in its
+community district, when they happen, what they are about and whether the
+block was a hotspot in both years, with charts and a written comparison of the
+two buildings (`/api/street`, built by `python -m src.street`).
+
 The map still opens without processed building data and explains which pipeline
 steps are missing. Outdated study caches are not used for building predictions.
 
@@ -73,6 +85,8 @@ py -3.12 -m src.features_housing
 py -3.12 -m src.app_data
 py -3.12 -m src.insights
 py -3.12 -m src.resolution train
+py -3.12 -m src.download --only 311street
+py -3.12 -m src.street
 py -3.12 app/app.py
 ```
 
@@ -85,7 +99,8 @@ py -3.12 -m unittest discover -s tests -v
 ```
 
 Notebooks 01–12 cover housing exploration, cleaning, features, models and
-landlord neighbors. Notebook 13 covers 311 closure-time regression. They can
+landlord neighbors. Notebook 13 covers 311 closure-time regression. Notebook
+14 covers street noise and sanitation within 100 m. They can
 also be run in order after downloading. See [the 311 guide](docs/Resolution_Time_ML.md).
 
 ## Source coverage

@@ -123,6 +123,23 @@ HOUSING_DATASETS = {
     "crime_current": ("5uac-w243", CRIME_COLUMNS, "rpt_dt", "2026-01-01"),   # current year only
 }
 
+# --------------------------------------------------------------------------
+# Street life: noise and sanitation complaints around each building (src/street.py)
+# --------------------------------------------------------------------------
+# group -> 311 complaint types. Helicopter noise is left out: it is not tied to a place.
+# HPD "UNSANITARY CONDITION" is left out too: it is inside the apartment, covered by the housing model.
+STREET_TYPES = {
+    "noise": ["Noise - Residential", "Noise - Street/Sidewalk", "Noise - Commercial", "Noise - Vehicle",
+              "Noise - Park", "Noise - House of Worship", "Noise"],
+    "sanitation": ["Dirty Condition", "Illegal Dumping", "Missed Collection", "Rodent",
+                   "Residential Disposal Complaint", "Litter Basket Request", "Litter Basket Complaint"],
+}
+RAW_311_STREET_DIR = RAW_DIR / "311_street"   # one parquet file per (type, month)
+STREET_RADII = (100, 200, 500)  # the radii the app offers; each gets its own yardstick
+STREET_RADIUS_M = 100        # "around this building" = within 100 m
+STREET_CELL_M = 100          # grid cell size for the neighborhood analysis
+NIGHT_HOURS = (22, 7)        # night = 10pm to 7am
+
 # Socrata paging. An optional app token (free, from data.cityofnewyork.us)
 # raises rate limits; set it as the environment variable NYC_APP_TOKEN.
 PAGE_SIZE = 50_000
