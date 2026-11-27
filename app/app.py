@@ -12,6 +12,8 @@ Explore reads its building data from three JSON endpoints:
 * ``/api/nearest?lat=&lng=``   the apartment building nearest a map click
 * ``/api/search?q=``           address search, with each building's coordinates
 * ``/api/building/<bbl>``      one building's report and chart series
+* ``/api/street?alat=&alng=[&blat=&blng=][&r=]``   noise & sanitation within r m (100/200/500) of
+                               one or two points, with a written comparison (src/street.py)
 
 Its 311 data comes from NYC Open Data straight from the browser.
 
@@ -142,6 +144,25 @@ def load_buildings() -> SimpleNamespace | None:
 
 
 D = load_buildings()
+
+
+def load_street():
+    """The noise & sanitation index (src/street.py), or None if it isn't built.
+
+    Independent of the building data: either can be missing without the other.
+    """
+    try:
+        from src import street
+    except ImportError as exc:
+        log.warning("street profile disabled, missing dependency: %s", exc)
+        return None
+    if not (street.CLEAN_FILE.exists() and street.BUILDINGS_FILE.exists()):
+        log.warning("street profile disabled: run `python -m src.street`")
+        return None
+    return street.StreetIndex.load()
+
+
+STREET = load_street()
 
 
 def building_charts(bbl: str, data: dict) -> dict:
@@ -304,6 +325,38 @@ def api_building(bbl: str):
     data, _, charts = building_payload(bbl)
     return jsonify(jsonable({"report": data, "charts": charts,
                              "url": url_for("building", bbl=bbl)}))
+
+
+@app.get("/api/street")
+def api_street():
+    """Noise & sanitation within r m (100, 200 or 500) of one point (alat, alng) or two (+ blat, blng),
+    with a written report: one paragraph for one point, a comparison for two."""
+    if STREET is None:
+        return jsonify({"error": "street data is not built"}), 503
+    from src import street
+
+    def point(k: str) -> tuple[float, float] | None:
+        try:
+            lat, lng = float(request.args[f"{k}lat"]), float(request.args[f"{k}lng"])
+        except (KeyError, ValueError):
+            return None
+        b = config.NYC_BBOX
+        if not (b["lat_min"] <= lat <= b["lat_max"] and b["lon_min"] <= lng <= b["lon_max"]):
+            abort(400)
+        return lat, lng
+
+    a, b = point("a"), point("b")
+    radius = request.args.get("r", config.STREET_RADIUS_M, type=int)
+    if a is None or radius not in STREET.radii:
+        abort(400)
+    out = {"A": STREET.profile(*a, radius), "radius_m": radius, "caveat": street.caveat(radius)}
+    if b is None:
+        out["report"] = street.profile_report(out["A"], "This building")
+    else:
+        out["B"] = STREET.profile(*b, radius)
+        out["distance_m"] = street.distance_m(out["A"], out["B"])
+        out["report"] = street.compare_report(out["A"], out["B"], "Building A", "Building B")
+    return jsonify(jsonable(out))
 
 
 @app.template_filter("pct")

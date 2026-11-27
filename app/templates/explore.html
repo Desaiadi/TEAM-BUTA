@@ -152,6 +152,14 @@
       <p class="muted small" id="streetLead">Live NYC 311 service requests within the same radius and time period of each pin.</p>
       <div id="street"></div>
     </section>
+
+    <section class="street" id="profileSection" hidden>
+      <span class="eyebrow dark">NOISE &amp; CLEANLINESS · <span id="profileRadius">200</span> M</span>
+      <h2>How loud, how clean, and when.</h2>
+      <p class="profile-report" id="profileReport"></p>
+      <p class="muted small" id="profileCaveat"></p>
+      <div id="profile"></div>
+    </section>
   </div>
 </section>
 
@@ -167,6 +175,8 @@
     <p>"What to expect over the next four months" comes from one model per problem type, trained on every NYC apartment building with 3+ units: its HPD complaint and violation history, its landlord's other buildings, its neighbours within 100 m, bedbug filings, evictions and nearby crime. A click on the map picks the nearest of those buildings within 150 m.</p>
     <h3>Real reports, consistent boundaries</h3>
     <p>"Around the block" queries NYC 311 requests live, within the selected radius of each pin and the same lookback ending {{ study_end }}. Closure summaries use only closure dates recorded before the study cutoff; category fields remain downloaded snapshots. Counts include only geocoded requests. Overlapping circles can include the same requests.</p>
+    <h3>Noise &amp; cleanliness, in context</h3>
+    <p>"How loud, how clean, and when" counts 311 noise and sanitation complaints from {{ study_start }} to {{ study_end }} within the selected radius (100, 200 or 500 m) of each building, and ranks that against every other apartment building in the same community district, counted at the same radius. "Quieter than 90%" means 90% of those buildings have more noise complaints around them. A hotspot is a building in its district's top 10% in both January–October 2025 and January–October 2026. The paragraph is written by fixed rules from those numbers.</p>
     <h3>A transparent recommendation</h3>
     <p>The balanced view compares total requests. A chosen priority compares that category only. A minimum of 20 combined reports and a 10% difference are needed to suggest a lower-reporting location. These are simple display rules, not statistical significance tests.</p>
     <h3>Reports are only part of the story</h3>
@@ -189,6 +199,7 @@
       nearest: {{ url_for('api_nearest')|tojson }},
       search: {{ url_for('api_search')|tojson }},
       building: {{ url_for('api_building', bbl='0')[:-1]|tojson }},
+      street: {{ url_for('api_street')|tojson }},
     },
   };
 </script>

@@ -13,6 +13,7 @@ Usage (from the project root):
     python -m src.download                  # PLUTO + housing datasets (what the project needs)
     python -m src.download --only pluto     # one source: pluto | housing | 311 | 311full
     python -m src.download --only housing   # HPD, bedbugs, evictions, NYPD complaints
+    python -m src.download --only 311street # noise + sanitation 311 complaints (src/street.py)
     python -m src.download --only 311full   # the complete 311 table (~23M rows, ~1.5 GB)
     python -m src.download --force      # ignore the cache and re-download
 """
@@ -96,15 +97,15 @@ def _month_starts(start: str, end: str) -> list[pd.Timestamp]:
     return list(pd.date_range(pd.Timestamp(start).replace(day=1), end, freq="MS"))
 
 
-def _chunk_path(complaint_type: str, month: pd.Timestamp):
+def _chunk_path(complaint_type: str, month: pd.Timestamp, root=None):
     """Cache-file path for one (complaint type, month) chunk."""
     safe = "".join(ch if ch.isalnum() else "_" for ch in complaint_type).strip("_")
-    return config.RAW_311_DIR / safe / f"{month:%Y-%m}.parquet"
+    return (root or config.RAW_311_DIR) / safe / f"{month:%Y-%m}.parquet"
 
 
-def _download_311_chunk(complaint_type: str, month: pd.Timestamp, force: bool) -> tuple[str, int]:
+def _download_311_chunk(complaint_type: str, month: pd.Timestamp, force: bool, root=None) -> tuple[str, int]:
     """Download one month of one complaint type unless it is already cached."""
-    path = _chunk_path(complaint_type, month)
+    path = _chunk_path(complaint_type, month, root)
     if path.exists() and not force:
         return f"{complaint_type} {month:%Y-%m} (cached)", 0
     nxt = month + pd.offsets.MonthBegin(1)
@@ -117,19 +118,30 @@ def _download_311_chunk(complaint_type: str, month: pd.Timestamp, force: bool) -
     return f"{complaint_type} {month:%Y-%m}", len(df)
 
 
-def download_311(force: bool = False) -> None:
-    """Download every (complaint type, month) chunk in parallel threads."""
+def download_311(force: bool = False, types: list[str] | None = None, root=None) -> None:
+    """Download every (complaint type, month) chunk in parallel threads.
+
+    types and root default to config.COMPLAINT_TYPES and config.RAW_311_DIR;
+    the street analysis passes its own (see download_311_street).
+    """
+    types = types or config.COMPLAINT_TYPES
     months = _month_starts(config.START_DATE, config.END_DATE)
-    jobs = [(ct, m) for ct in config.COMPLAINT_TYPES for m in months]
-    log.info("311: %d chunks (%d types x %d months)", len(jobs), len(config.COMPLAINT_TYPES), len(months))
+    jobs = [(ct, m) for ct in types for m in months]
+    log.info("311: %d chunks (%d types x %d months)", len(jobs), len(types), len(months))
     total = 0
     with ThreadPoolExecutor(max_workers=config.MAX_WORKERS) as pool:
-        futures = {pool.submit(_download_311_chunk, ct, m, force): (ct, m) for ct, m in jobs}
+        futures = {pool.submit(_download_311_chunk, ct, m, force, root): (ct, m) for ct, m in jobs}
         for i, fut in enumerate(as_completed(futures), 1):
             label, n = fut.result()
             total += n
             log.info("[%d/%d] %s: %s rows", i, len(jobs), label, f"{n:,}")
     log.info("311 done: %s new rows downloaded", f"{total:,}")
+
+
+def download_311_street(force: bool = False) -> None:
+    """Noise and sanitation complaints for the street analysis (config.STREET_TYPES)."""
+    types = [t for group in config.STREET_TYPES.values() for t in group]
+    download_311(force, types=types, root=config.RAW_311_STREET_DIR)
 
 
 def _download_311_full_month(month: pd.Timestamp, force: bool) -> tuple[str, int]:
@@ -239,7 +251,8 @@ def download_pluto(force: bool = False) -> None:
     log.info("PLUTO: %s tax lots saved", f"{len(df):,}")
 
 
-SOURCES = {"pluto": download_pluto, "housing": download_housing, "311": download_311, "311full": download_311_full}
+SOURCES = {"pluto": download_pluto, "housing": download_housing, "311": download_311,
+           "311street": download_311_street, "311full": download_311_full}
 
 
 def main() -> None:

@@ -1,0 +1,70 @@
+{
+  "dataset": "311_street",
+  "steps": [
+    {
+      "step": "load_raw",
+      "rows_before": 1813290,
+      "rows_after": 1813290,
+      "rows_removed": 0,
+      "detail": "14 complaint types"
+    },
+    {
+      "step": "drop_duplicate_keys",
+      "rows_before": 1813290,
+      "rows_after": 1813290,
+      "rows_removed": 0,
+      "detail": "duplicate unique_key"
+    },
+    {
+      "step": "study_window",
+      "rows_before": 1813290,
+      "rows_after": 1813290,
+      "rows_removed": 0,
+      "detail": "created 2025-01-01 to 2026-10-31"
+    },
+    {
+      "step": "known_types",
+      "rows_before": 1813290,
+      "rows_after": 1813290,
+      "rows_removed": 0,
+      "detail": "complaint type listed in config.STREET_TYPES"
+    },
+    {
+      "step": "valid_location",
+      "rows_before": 1813290,
+      "rows_after": 1804815,
+      "rows_removed": 8475,
+      "detail": "missing coordinates or outside NYC"
+    },
+    {
+      "step": "same_day_repeats",
+      "rows_before": 1804815,
+      "rows_after": 1339462,
+      "rows_removed": 465353,
+      "detail": "same location, type and descriptor on the same day"
+    },
+    {
+      "step": "done",
+      "rows_before": 1339462,
+      "rows_after": 1339462,
+      "rows_removed": 0,
+      "detail": "noise=991,461, sanitation=348,001"
+    }
+  ],
+  "by_type": {
+    "Noise - Residential": 474378,
+    "Noise - Street/Sidewalk": 253506,
+    "Dirty Condition": 117123,
+    "Noise": 95777,
+    "Noise - Commercial": 87007,
+    "Missed Collection": 72030,
+    "Illegal Dumping": 69667,
+    "Noise - Vehicle": 67526,
+    "Rodent": 51671,
+    "Residential Disposal Complaint": 27560,
+    "Noise - Park": 10978,
+    "Litter Basket Request": 7271,
+    "Litter Basket Complaint": 2679,
+    "Noise - House of Worship": 2289
+  }
+}

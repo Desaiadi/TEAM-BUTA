@@ -383,6 +383,19 @@
     return r.json();
   }
 
+  /** Noise & sanitation within the chosen radius of the pins, with the written report (/api/street). */
+  async function loadProfile(points, ks, radius, signal) {
+    const u = new URL(CFG.api.street, location.origin);
+    u.searchParams.set('r', radius);
+    ks.forEach((k) => {
+      u.searchParams.set(`${lower(k)}lat`, points[k].lat);
+      u.searchParams.set(`${lower(k)}lng`, points[k].lng);
+    });
+    const r = await fetch(u, { signal });
+    if (!r.ok) throw new Error(`the street profile returned ${r.status}`);
+    return r.json();
+  }
+
   async function runCheck() {
     state.controller?.abort();
     const controller = new AbortController();
@@ -403,9 +416,10 @@
     const timer = setTimeout(() => controller.abort(), 90000);
     try {
       // Settle separately: a slow 311 API shouldn't hide the building reports.
-      const [bRes, sRes] = await Promise.all([
+      const [bRes, sRes, pRes] = await Promise.all([
         Promise.allSettled(ks.map((k) => loadBuilding(points[k].bbl, signal))),
         Promise.allSettled(ks.map((k) => getRows(points[k], start, end, radius, signal))),
+        loadProfile(points, ks, radius, signal).catch(() => null),   // optional: hidden if not built
       ]);
       if (rev !== state.revision) return;
       if (signal.aborted) throw new Error('timeout');
@@ -414,7 +428,7 @@
         buildings[k] = bRes[i].status === 'fulfilled' ? bRes[i].value : { error: bRes[i].reason?.message || 'request failed' };
         street[k] = sRes[i].status === 'fulfilled' ? sRes[i].value : { error: sRes[i].reason?.message || 'request failed' };
       });
-      state.result = { ks, points, buildings, street, start, end, radius };
+      state.result = { ks, points, buildings, street, start, end, radius, profile: pRes };
       render();
       const streetOk = ks.every((k) => !street[k].error);
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -448,6 +462,7 @@
     renderExpect(R, have);
     renderCharts(R, have);
     renderStreet(R);
+    renderProfile(R);
   }
 
   function headCard(k, R, name, body) {
@@ -758,6 +773,88 @@
       $('priority').value = state.priority;
       $('priority').onchange = () => { state.priority = $('priority').value; recommend(); };
       recommend();
+    }
+  }
+
+  // ------------------------------------------------------------ noise & cleanliness (src/street.py)
+  const GROUP_NAMES = { noise: 'Noise', sanitation: 'Sanitation' };
+  const RANK_WORDS = { noise: ['Noisier', 'Quieter'], sanitation: ['Dirtier', 'Cleaner'] };
+
+  /** 0.85 -> "Noisier than 85%" of the district's apartment buildings. */
+  function rankText(g, pct) {
+    if (pct == null) return '–';
+    const [more, less] = RANK_WORDS[g];
+    pct = Math.min(Math.max(pct, 0.01), 0.99);   // never "100%", as in src/street.py
+    return pct >= 0.5 ? `${more} than ${Math.round(pct * 100)}%` : `${less} than ${Math.round((1 - pct) * 100)}%`;
+  }
+
+  function renderProfile(R) {
+    const P = R.profile, section = $('profileSection');
+    section.hidden = !P || !!P.error;
+    if (section.hidden) return;
+    const ks = R.ks.filter((k) => P[k]), two = ks.length === 2, groups = Object.keys(P[ks[0]].groups);
+    const years = (g) => (g.per_year ? g.count / g.per_year : 1);
+    const tag = (k) => (two ? `Building ${k}` : 'This building');
+    const dash = (k) => (k === 'B' ? { borderDash: [6, 4] } : {});
+    const colorOf = (k) => (k === 'A' ? PALETTE.teal : PALETTE.orange);
+
+    $('profileReport').textContent = P.report;
+    $('profileCaveat').textContent = P.caveat;
+    const r = P.radius_m;
+    $('profileRadius').textContent = r;
+    const sameDistrict = !two || P.A.district === P.B.district;
+    const district = sameDistrict ? esc(P[ks[0]].district) : 'its own community district';
+    const perYear = (v) => Math.round(v).toLocaleString();
+    // The typical (median) building is the yardstick, so it sits next to the counts
+    const typical = (g) => (sameDistrict
+      ? `typical building: ${perYear(P[ks[0]].groups[g].district_median)}`
+      : `typical building: ${ks.map((k) => `${k}'s district ${perYear(P[k].groups[g].district_median)}`).join(', ')}`);
+    const metric = (g) => `<article><span>${GROUP_NAMES[g].toUpperCase()} · IN ITS DISTRICT</span>
+      <strong>${ks.map((k, i) => (i ? `<i>vs</i> <b>${rankText(g, P[k].groups[g].pct_district)}</b>` : rankText(g, P[k].groups[g].pct_district))).join(' ')}</strong>
+      <p>of apartment buildings in ${district}, by ${GROUP_NAMES[g].toLowerCase()} complaints within ${r} m.
+        Per year: ${ks.map((k) => `${two ? k + ' ' : ''}${perYear(P[k].groups[g].per_year)}`).join(' · ')} · ${typical(g)}</p></article>`;
+
+    $('profile').innerHTML = `
+      <div class="metrics two">${groups.map(metric).join('')}</div>
+      <section class="two-col">
+        ${chartCard('pHour', 'When is it noisy?', 'Share of each place\'s noise complaints in each hour, from noon to the next morning. Night (10pm to 7am) is in the middle.', 260)}
+        ${chartCard('pTop', 'What people complain about', `The three most common kinds of noise and sanitation complaints within ${r} m, per year.`, 260)}
+      </section>`;
+
+    // An hourly profile needs enough complaints to mean something.
+    const MIN_FOR_HOURS = 20;
+    const timed = ks.filter((k) => P[k].groups.noise.count >= MIN_FOR_HOURS);
+    const skipped = ks.filter((k) => !timed.includes(k));
+    if (skipped.length) {
+      $('pHour').closest('.card').querySelector('p').textContent +=
+        ` ${skipped.map(tag).join(' and ')}: fewer than ${MIN_FOR_HOURS} noise complaints, too few to show by hour.`;
+    }
+    // Noon to noon, so the night (10pm-7am) is one stretch in the middle instead of split at the edges
+    const order = Array.from({ length: 24 }, (_, i) => (i + 12) % 24);
+    const hours = order.map((h) => `${h % 12 || 12}${h < 12 ? 'am' : 'pm'}`);
+    if (timed.length) {
+      butaChart('pHour', 'line', hours, timed.map((k) => {
+        const n = P[k].groups.noise.by_hour, total = n.reduce((s, v) => s + v, 0);
+        return { label: tag(k), data: order.map((h) => n[h] / total), color: colorOf(k), ...dash(k) };
+      }), { format: 'pct', labelHeader: 'Hour', legend: true, tickEvery: 3 });
+    } else {
+      $('pHour').closest('.chart').hidden = true;
+    }
+
+    // One chart for both groups: each row is "Noise · Loud music/party", noise rows first
+    const rows = groups.flatMap((g) => [...new Set(ks.flatMap((k) => P[k].groups[g].top.map((t) => t.label)))]
+      .map((label) => ({ g, label })));
+    if (rows.length) {
+      butaChart('pTop', 'bar', rows.map((x) => `${GROUP_NAMES[x.g]} · ${x.label}`), ks.map((k) => ({
+        label: tag(k), color: colorOf(k),
+        data: rows.map(({ g, label }) => {
+          const G = P[k].groups[g], t = G.top.find((t) => t.label === label);
+          return t ? t.count / years(G) : 0;
+        }),
+      })), { horizontal: true, format: 'int', labelHeader: 'Kind of complaint', legend: true });
+    } else {
+      $('pTop').closest('.chart').insertAdjacentHTML('beforebegin', '<p class="muted">No noise or sanitation complaints here.</p>');
+      $('pTop').closest('.chart').hidden = true;
     }
   }
 
