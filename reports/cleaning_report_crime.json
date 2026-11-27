@@ -3,44 +3,44 @@
   "steps": [
     {
       "step": "load_raw",
-      "rows_before": 2670820,
-      "rows_after": 2670820,
+      "rows_before": 1006599,
+      "rows_after": 1006599,
       "rows_removed": 0,
       "detail": "historic + current year"
     },
     {
       "step": "drop_duplicate_cmplnt_num",
-      "rows_before": 2670820,
-      "rows_after": 2670818,
-      "rows_removed": 2,
+      "rows_before": 1006599,
+      "rows_after": 1006599,
+      "rows_removed": 0,
       "detail": ""
     },
     {
       "step": "parse_dates",
-      "rows_before": 2670818,
-      "rows_after": 2670818,
+      "rows_before": 1006599,
+      "rows_after": 1006599,
       "rows_removed": 0,
-      "detail": "missing or pre-2022 rpt_dt"
+      "detail": "missing or pre-2025 rpt_dt"
     },
     {
       "step": "valid_coordinates",
-      "rows_before": 2670818,
-      "rows_after": 2670769,
-      "rows_removed": 49,
+      "rows_before": 1006599,
+      "rows_after": 1006594,
+      "rows_removed": 5,
       "detail": "missing, zero or outside-NYC coordinates"
     },
     {
       "step": "derive_fields",
-      "rows_before": 2670769,
-      "rows_after": 2670769,
+      "rows_before": 1006594,
+      "rows_after": 1006594,
       "rows_removed": 0,
       "detail": "severity, crime group (regex), in-residence flag",
       "groups": {
-        "property": 1196086,
-        "violent": 551226,
-        "harassment": 489719,
-        "other": 322318,
-        "drugs/weapons": 111420
+        "property": 427834,
+        "violent": 207133,
+        "harassment": 182345,
+        "other": 139799,
+        "drugs/weapons": 49483
       }
     }
   ]

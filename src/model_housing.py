@@ -1,8 +1,8 @@
 """Models for Know Before You Rent: one classifier per problem type.
 
-Question 5: for a building, how likely is each problem type next year?
+Question 5: for a building, how likely is each problem type next 4 months?
 
-* Train on the 2024 table (history 2022-23), test on 2025 (history 2023-24).
+* Train on Jan–Jun 2025 history / Jul–Oct 2025 outcomes; test on the matching 2026 windows.
 * Compare a simple baseline ("it happens again if it happened before"),
   logistic regression, and gradient-boosted trees.
 * Feature-group ablation shows how much each kind of information adds:
@@ -80,7 +80,7 @@ def scores(y, p) -> dict:
 
 
 def baseline_scores(test: pd.DataFrame, problem: str) -> dict:
-    """Naive rule: P(problem next year) = 1 if the building had it in its history window, else 0.
+    """Naive rule: P(problem next 4 months) = 1 if the building had it in its history window, else 0.
 
     Scored with its own counts so ties are broken by how often it happened.
     """
@@ -141,7 +141,7 @@ def group_importance(model, test: pd.DataFrame, problem: str, n: int = 20_000,
     cols = feature_columns(test)
     sample = test.sample(min(n, len(test)), random_state=seed)
     X, y = to_matrix(sample, cols), sample[f"y_{slug(problem)}"]
-    imp = permutation_importance(model, X, y, scoring="roc_auc", n_repeats=3, random_state=seed, n_jobs=-1)
+    imp = permutation_importance(model, X, y, scoring="roc_auc", n_repeats=3, random_state=seed, n_jobs=4)
     per_feature = pd.Series(imp.importances_mean, index=cols)
     groups = feature_groups(cols)
     return pd.Series({g: per_feature[c].sum() for g, c in groups.items()}).rename(problem), per_feature
@@ -157,8 +157,8 @@ def risk_level(p: np.ndarray, base_rate: float) -> np.ndarray:
 
 
 REASONS = {
-    "c_": "this building had {v:.0f} {t} complaint(s) in the last 2 years",
-    "v_": "inspectors issued {v:.0f} {t} violation(s) in the last 2 years",
+    "c_": "this building had {v:.0f} {t} complaint(s) in the last 6 months",
+    "v_": "inspectors issued {v:.0f} {t} violation(s) in the last 6 months",
     "ll_rate_": "the landlord's other buildings average {v:.1f} {t} complaints per 100 apartments",
     "nb100_": "{v:.0f} {t} complaints in other buildings within 100 m",
     "crime_": "{v:.0f} {t} crimes reported per year within 200 m",

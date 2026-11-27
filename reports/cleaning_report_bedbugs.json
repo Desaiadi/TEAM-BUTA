@@ -3,30 +3,30 @@
   "steps": [
     {
       "step": "load_raw",
-      "rows_before": 727059,
-      "rows_after": 727059,
+      "rows_before": 118012,
+      "rows_after": 118012,
       "rows_removed": 0,
       "detail": ""
     },
     {
       "step": "valid_bbl",
-      "rows_before": 727059,
-      "rows_after": 726357,
-      "rows_removed": 702,
+      "rows_before": 118012,
+      "rows_after": 117867,
+      "rows_removed": 145,
       "detail": "missing or invalid BBL"
     },
     {
       "step": "drop_impossible",
-      "rows_before": 726357,
-      "rows_after": 726180,
-      "rows_removed": 177,
+      "rows_before": 117867,
+      "rows_after": 117859,
+      "rows_removed": 8,
       "detail": "infested > units, negative counts, no period or units"
     },
     {
       "step": "one_filing_per_building_year",
-      "rows_before": 726180,
-      "rows_after": 618126,
-      "rows_removed": 108054,
+      "rows_before": 117859,
+      "rows_after": 103089,
+      "rows_removed": 14770,
       "detail": ""
     }
   ]

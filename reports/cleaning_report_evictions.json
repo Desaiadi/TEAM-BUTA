@@ -3,37 +3,37 @@
   "steps": [
     {
       "step": "load_raw",
-      "rows_before": 137724,
-      "rows_after": 137724,
+      "rows_before": 34816,
+      "rows_after": 34816,
       "rows_removed": 0,
       "detail": ""
     },
     {
       "step": "residential_only",
-      "rows_before": 137724,
-      "rows_after": 125344,
-      "rows_removed": 12380,
+      "rows_before": 34816,
+      "rows_after": 31905,
+      "rows_removed": 2911,
       "detail": "commercial evictions removed"
     },
     {
       "step": "parse_dates",
-      "rows_before": 125344,
-      "rows_after": 64293,
-      "rows_removed": 61051,
-      "detail": "missing or pre-2022 executed_date"
+      "rows_before": 31905,
+      "rows_after": 31905,
+      "rows_removed": 0,
+      "detail": "missing or pre-2025 executed_date"
     },
     {
       "step": "valid_bbl",
-      "rows_before": 64293,
-      "rows_after": 60319,
-      "rows_removed": 3974,
+      "rows_before": 31905,
+      "rows_after": 29770,
+      "rows_removed": 2135,
       "detail": "missing or invalid BBL"
     },
     {
       "step": "drop_duplicates",
-      "rows_before": 60319,
-      "rows_after": 60306,
-      "rows_removed": 13,
+      "rows_before": 29770,
+      "rows_after": 29762,
+      "rows_removed": 8,
       "detail": "same case, docket, building and date"
     }
   ]

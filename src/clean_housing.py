@@ -69,7 +69,8 @@ def _parse_dates(df: pd.DataFrame, cols: list[str], required: str, rep: Cleaning
     n = len(df)
     for c in cols:
         df[c] = pd.to_datetime(df[c].astype("string"), errors="coerce")
-    df = df[df[required].notna() & (df[required] >= pd.Timestamp(start))]
+    df = df[df[required].notna() & (df[required] >= pd.Timestamp(start))
+            & (df[required] < pd.Timestamp(config.STUDY_END_EXCLUSIVE))]
     rep.add("parse_dates", n, len(df), f"missing or pre-{start[:4]} {required}")
     return df
 
@@ -163,6 +164,8 @@ def clean_bedbugs(raw: pd.DataFrame, rep: CleaningReport) -> pd.DataFrame:
     df["period_end"] = pd.to_datetime(df["filling_period_end_date"].astype("string"), errors="coerce")
     bad = (df["infested_dwelling_unit_count"] > df["of_dwelling_units"]) | (df[counts] < 0).any(axis=1) \
         | df["period_end"].isna() | df["of_dwelling_units"].fillna(0).le(0)
+    bad |= ~df["period_end"].between(pd.Timestamp(config.STUDY_START_DATE), pd.Timestamp(config.STUDY_END_DATE))
+    bad |= df["filing_date"].ge(pd.Timestamp(config.STUDY_END_EXCLUSIVE)) | df["filing_date"].isna()
     df = df[~bad]
     rep.add("drop_impossible", n, len(df), "infested > units, negative counts, no period or units")
 
@@ -173,7 +176,7 @@ def clean_bedbugs(raw: pd.DataFrame, rep: CleaningReport) -> pd.DataFrame:
     rep.add("one_filing_per_building_year", n, len(df))
     df["has_infestation"] = df["infested_dwelling_unit_count"] > 0
     df["infested_share"] = df["infested_dwelling_unit_count"] / df["of_dwelling_units"]
-    keep = ["bbl", "year", "period_end", "of_dwelling_units", "infested_dwelling_unit_count",
+    keep = ["bbl", "year", "period_end", "filing_date", "of_dwelling_units", "infested_dwelling_unit_count",
             "eradicated_unit_count", "re_infested_dwelling_unit", "has_infestation", "infested_share"]
     return df[keep].reset_index(drop=True)
 
@@ -218,7 +221,7 @@ def crime_group(offense: pd.Series) -> pd.Series:
 
 
 def clean_crime(raw: pd.DataFrame, rep: CleaningReport) -> pd.DataFrame:
-    """Reported crimes since 2022 with valid NYC coordinates, grouped by severity and type."""
+    """Reported crimes in the study window with valid NYC coordinates, grouped by severity and type."""
     df = _start(raw, rep, "historic + current year")
     df = _dedupe(df, "cmplnt_num", rep)
     df = _parse_dates(df, ["rpt_dt"], "rpt_dt", rep)
@@ -316,9 +319,12 @@ def clean_all() -> None:
     """Clean every housing dataset and save to data/processed/ with a JSON report."""
     from src.preprocess import clean_pluto   # PLUTO building data, shared with the 311 pipeline
 
+    config.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    config.REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     pluto, rep_p = clean_pluto()
     pluto.to_parquet(config.CLEAN_PLUTO_FILE, index=False)
     reports = [rep_p.to_dict()]
+    (config.REPORTS_DIR / "cleaning_report_pluto.json").write_text(json.dumps(rep_p.to_dict(), indent=2, default=str))
     jobs = {
         "hpd_complaints": lambda r: clean_complaints(H.load("hpd_complaints"), r),
         "hpd_violations": lambda r: clean_violations(H.load("hpd_violations"), r),
@@ -333,8 +339,11 @@ def clean_all() -> None:
         df = job(rep)
         df.to_parquet(OUT[name], index=False)
         reports.append(rep.to_dict())
+        (config.REPORTS_DIR / f"cleaning_report_{name}.json").write_text(json.dumps(rep.to_dict(), indent=2, default=str))
         log.info("%s: %s rows -> %s", name, f"{len(df):,}", OUT[name].name)
     (config.REPORTS_DIR / "cleaning_report_housing.json").write_text(json.dumps(reports, indent=2, default=str))
+    from src.study import write_coverage
+    write_coverage()
 
 
 if __name__ == "__main__":

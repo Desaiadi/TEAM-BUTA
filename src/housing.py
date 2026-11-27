@@ -22,6 +22,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from src import config
+from src.study import EVENT_DATES, in_window
 
 
 # --------------------------------------------------------------------------
@@ -31,6 +32,8 @@ def dataset_files(name: str) -> list[Path]:
     """Parquet file(s) of a downloaded dataset: monthly files or a single file."""
     folder, single = config.RAW_DIR / name, config.RAW_DIR / f"{name}.parquet"
     files = sorted(folder.glob("*.parquet")) if folder.is_dir() else ([single] if single.exists() else [])
+    if folder.is_dir() and name in EVENT_DATES:
+        files = [f for f in files if config.STUDY_START_DATE[:7] <= f.stem <= config.STUDY_END_DATE[:7]]
     if not files:
         raise FileNotFoundError(f"{name} not downloaded. Run `python -m src.download --only housing`.")
     return files
@@ -41,9 +44,19 @@ def load(name: str, columns: list[str] | None = None) -> pd.DataFrame:
     parts = []
     for f in dataset_files(name):
         available = pq.read_schema(f).names
-        cols = None if columns is None else [c for c in columns if c in available]
-        parts.append(pd.read_parquet(f, columns=cols, dtype_backend="pyarrow").reindex(columns=columns)
-                     if columns else pd.read_parquet(f, dtype_backend="pyarrow"))
+        date_col = EVENT_DATES.get(name)
+        date_fields = ([date_col] if date_col else []) + (["filing_date"] if name == "bedbugs" else [])
+        wanted = None if columns is None else list(dict.fromkeys([*columns, *date_fields]))
+        cols = None if wanted is None else [c for c in wanted if c in available]
+        part = pd.read_parquet(f, columns=cols, dtype_backend="pyarrow")
+        if date_col:
+            if date_col not in part:
+                raise ValueError(f"{name}: missing event date {date_col}")
+            part = part[in_window(part[date_col])]
+        if name == "bedbugs":
+            filing = pd.to_datetime(part["filing_date"].astype("string"), format="mixed", errors="coerce")
+            part = part[filing.lt(pd.Timestamp(config.STUDY_END_EXCLUSIVE))]
+        parts.append(part.reindex(columns=columns) if columns is not None else part)
     return pd.concat(parts, ignore_index=True)
 
 

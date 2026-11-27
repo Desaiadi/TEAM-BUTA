@@ -2,15 +2,10 @@
 
     python -m src.app_data
 
-1. Rebuild the feature table for the most recent history (2025-26) for all
-   residential buildings with 3+ apartments.
-2. Train the production models on the 2025 table (history 2023-24 → 2025
-   outcomes), the latest year with complete outcomes.
-3. Score every building: probability and risk level per problem type, plus
-   the top three reasons (from the logistic model's contributions).
-4. Add the red flags a renter cares about right now: open class C violations,
-   bedbugs last year, evictions, crime within 200 m, and the landlord.
-5. Save one table the Flask app reads at startup, so the app needs no models.
+Build six-month history features and four-month complaint forecasts.
+Train on Jan–Jun 2026 history / Jul–Oct 2026 outcomes, then score May–Oct
+2026 history for Nov 2026–Feb 2027. These are forecasts, not observed labels.
+Status and ownership fields are downloaded snapshots and cannot be backdated.
 """
 
 from __future__ import annotations
@@ -33,8 +28,8 @@ APP_FILE = config.PROCESSED_DIR / "app_buildings.parquet"
 BASE_RATES_FILE = config.PROCESSED_DIR / "app_base_rates.json"
 ADDRESS_FILE = config.PROCESSED_DIR / "app_addresses.parquet"
 APP_MODELS = M.MODELS_DIR / "app_models.joblib"
-TRAIN_YEAR = 2025          # latest year with complete outcomes
-CURRENT_YEAR = 2027        # "next year" for the current history window (2025-26)
+TRAIN_WINDOW = "test"      # latest complete four-month outcome period: Jul–Oct 2026
+CURRENT_WINDOW = "forecast"  # May–Oct 2026 history -> Nov 2026–Feb 2027
 
 
 def train_production(train: pd.DataFrame, cols: list[str]) -> dict:
@@ -81,8 +76,8 @@ def red_flags(bbls: pd.Index) -> pd.DataFrame:
     flags["open_lead"] = open_v[open_v["is_lead"]].groupby("bbl").size()
     flags["bedbug_year"] = latest_bb["year"]
     flags["bedbug_infested_units"] = latest_bb["infested_dwelling_unit_count"]
-    flags["evictions_since_2022"] = ev.groupby("bbl").size()
-    count_cols = ["open_class_c", "open_violations", "open_lead", "evictions_since_2022"]
+    flags["evictions_in_study"] = ev.groupby("bbl").size()
+    count_cols = ["open_class_c", "open_violations", "open_lead", "evictions_in_study"]
     flags[count_cols] = flags[count_cols].fillna(0).astype(int)
     return flags
 
@@ -114,14 +109,15 @@ def build() -> pd.DataFrame:
     inp = F.load_inputs()
     universe = F.building_universe(inp["pluto"], inp["landlords"])
     A = F.neighbor_matrix(universe)
-    train = F.build_snapshot(TRAIN_YEAR, inp, universe, A)
-    current = F.build_snapshot(CURRENT_YEAR, inp, universe, A)
+    train = F.build_snapshot(TRAIN_WINDOW, inp, universe, A)
+    current = F.build_snapshot(CURRENT_WINDOW, inp, universe, A)
     cols = F.feature_columns(train)
 
     models = train_production(train, cols)
     base = {p: float(train[f"y_{F.slug(p)}"].mean()) for p in F.TARGET_TYPES}
-    APP_MODELS.parent.mkdir(parents=True, exist_ok=True)   # models/ is gitignored
-    joblib.dump({"features": cols, "base_rates": base, "models": models}, APP_MODELS)
+    APP_MODELS.parent.mkdir(parents=True, exist_ok=True)
+    from src.study import metadata
+    joblib.dump({"features": cols, "base_rates": base, "models": models, "study": metadata()}, APP_MODELS)
 
     X = M.to_matrix(current, cols)
     out = current.drop(columns=[c for c in current.columns if c.startswith("y_")]).copy()

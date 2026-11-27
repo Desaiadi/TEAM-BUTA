@@ -1,17 +1,9 @@
-"""Build the one-row-per-building table that the Know Before You Rent model learns from.
+"""Building features for the shared January 2025–October 2026 study.
 
-For a target year T, every residential building (3+ apartments) gets:
-
-  Building traits   age, era, apartments, floors, elevator vs walk-up, borough   (PLUTO)
-  Own history       complaints per problem type, violations by class and type,
-                    bedbug infestations, evictions, all in years T-2 and T-1   (HPD, bedbugs, evictions)
-  Landlord record   the landlord's OTHER buildings' complaint rates per type in T-2..T-1
-                    (leave-one-out, so a building never "sees" its own history twice)  (HPD registrations)
-  100 m around it   complaints per type in other buildings within 100 m              (PLUTO coordinates)
-  Targets           y_<type> = 1 if the building gets a complaint of that type in year T
-
-Training uses T = 2024 (history 2022-23); testing uses T = 2025 (history 2023-24),
-so the model is always judged on a year it has never seen.
+Train: January–June 2025 history -> July–October 2025 complaints.
+Test: January–June 2026 history -> July–October 2026 complaints.
+Forecast: May–October 2026 history -> November 2026–February 2027.
+All models use six-month histories and four-month outcome windows.
 """
 
 from __future__ import annotations
@@ -28,7 +20,7 @@ TARGET_TYPES = ["heat/hot water", "pests", "leaks/mold", "plumbing", "paint/plas
 NEIGHBOR_RADIUS_M = 100
 CRIME_RADIUS_M = 200          # NYPD geocodes reports to the nearest street segment, so 100 m is too tight
 CRIME_GROUPS = ["violent", "property", "drugs/weapons", "harassment"]
-FEATURES_FILE = config.PROCESSED_DIR / "building_features_{year}.parquet"
+FEATURES_FILE = config.PROCESSED_DIR / "building_features_{window}.parquet"
 
 
 def slug(problem_type: str) -> str:
@@ -45,11 +37,11 @@ def load_inputs() -> dict[str, pd.DataFrame]:
         "pluto": pd.read_parquet(config.CLEAN_PLUTO_FILE),
         "landlords": pd.read_parquet(OUT["landlords"]),
         "complaints": pd.read_parquet(OUT["hpd_complaints"],
-                                      columns=["complaint_id", "bbl", "year", "problem_type", "is_emergency"]),
-        "violations": pd.read_parquet(OUT["hpd_violations"], columns=["bbl", "year", "class", "problem_type"]),
-        "bedbugs": pd.read_parquet(OUT["bedbugs"], columns=["bbl", "year", "has_infestation"]),
-        "evictions": pd.read_parquet(OUT["evictions"], columns=["bbl", "year"]),
-        "crime": (pd.read_parquet(OUT["crime"], columns=["year", "severity", "crime_group", "in_residence",
+                                      columns=["complaint_id", "bbl", "received_date", "year", "problem_type", "is_emergency"]),
+        "violations": pd.read_parquet(OUT["hpd_violations"], columns=["bbl", "inspectiondate", "year", "class", "problem_type"]),
+        "bedbugs": pd.read_parquet(OUT["bedbugs"], columns=["bbl", "period_end", "filing_date", "year", "has_infestation"]),
+        "evictions": pd.read_parquet(OUT["evictions"], columns=["bbl", "executed_date", "year"]),
+        "crime": (pd.read_parquet(OUT["crime"], columns=["rpt_dt", "year", "severity", "crime_group", "in_residence",
                                                          "latitude", "longitude"])
                   if OUT["crime"].exists() else None),
     }
@@ -60,7 +52,7 @@ def _to_meters(lat, lon, lat0: float) -> np.ndarray:
     return np.column_stack([np.asarray(lon) * 111_320 * np.cos(lat0), np.asarray(lat) * 110_540])
 
 
-def crime_counts(b: pd.DataFrame, crime: pd.DataFrame, years, radius_m: float = CRIME_RADIUS_M) -> pd.DataFrame:
+def crime_counts(b: pd.DataFrame, crime: pd.DataFrame, years, radius_m: float = CRIME_RADIUS_M, exposure_years=None) -> pd.DataFrame:
     """Reported crimes within `radius_m` of each building over `years`, per year, by group and severity.
 
     A k-d tree on the crime points answers "how many points within r" for all
@@ -78,13 +70,13 @@ def crime_counts(b: pd.DataFrame, crime: pd.DataFrame, years, radius_m: float = 
             out[name] = 0.0
             continue
         tree = cKDTree(_to_meters(sub["latitude"], sub["longitude"], lat0))
-        out[name] = tree.query_ball_point(xy_b, radius_m, return_length=True, workers=-1) / len(years)
+        out[name] = tree.query_ball_point(xy_b, radius_m, return_length=True, workers=-1) / (exposure_years if exposure_years is not None else len(years))
     return out
 
 
 def building_universe(pluto: pd.DataFrame, landlords: pd.DataFrame, min_units: int = 3) -> pd.DataFrame:
     """Residential buildings with 3+ apartments (the ones renters rent in), with traits and landlord."""
-    b = pluto[(pluto["unitsres"] >= min_units) & pluto["latitude"].notna()].copy()
+    b = pluto[(pluto["unitsres"] >= min_units) & pluto["latitude"].notna() & (pluto["yearbuilt"].isna() | (pluto["yearbuilt"] <= 2025))].copy()
     b["era"] = pd.cut(b["yearbuilt"], [1799, 1919, 1939, 1959, 1979, 1999, 2100],
                       labels=["<1920", "1920-39", "1940-59", "1960-79", "1980-99", "2000+"]).astype("string")
     b["building_age"] = 2025 - b["yearbuilt"]
@@ -147,68 +139,98 @@ def landlord_leave_one_out(own: pd.DataFrame, units: pd.Series, landlord: pd.Ser
 # --------------------------------------------------------------------------
 # The snapshot
 # --------------------------------------------------------------------------
-def build_snapshot(target_year: int, inp: dict[str, pd.DataFrame], universe: pd.DataFrame | None = None,
-                   neighbors: sparse.csr_matrix | None = None, history_years: int = 2) -> pd.DataFrame:
-    """Features from years target_year-history_years .. target_year-1, targets from target_year."""
-    b = universe if universe is not None else building_universe(inp["pluto"], inp["landlords"])
+def build_snapshot(window: str, inp: dict[str, pd.DataFrame], universe: pd.DataFrame | None = None,
+                   neighbors: sparse.csr_matrix | None = None) -> pd.DataFrame:
+    """Construct a configured six-month history / four-month target snapshot."""
+    from src.study import in_window
+    if window not in config.HOUSING_WINDOWS:
+        raise ValueError(f"Use one of {list(config.HOUSING_WINDOWS)}; annual snapshots are obsolete")
+    start, cutoff, end = config.HOUSING_WINDOWS[window]
+    b = (universe if universe is not None else building_universe(inp["pluto"], inp["landlords"])).copy()
     A = neighbors if neighbors is not None else neighbor_matrix(b)
+    b["building_age"] = pd.Timestamp(cutoff).year - b["yearbuilt"]
     bbls = pd.Index(b["bbl"])
-    hist = list(range(target_year - history_years, target_year))
-    c, v = inp["complaints"], inp["violations"]
-
-    # Own history
+    c = inp["complaints"][in_window(inp["complaints"]["received_date"], start, cutoff)]
+    v = inp["violations"][in_window(inp["violations"]["inspectiondate"], start, cutoff)]
+    hist = list(range(pd.Timestamp(start).year, pd.Timestamp(cutoff).year + 1))
     own_c = counts_by(c, bbls, hist, "problem_type", TARGET_TYPES, "c_", distinct="complaint_id")
-    total_c = c[c["year"].isin(hist) & c["bbl"].isin(bbls)].groupby("bbl")["complaint_id"].nunique()
-    emerg = c[c["year"].isin(hist) & c["is_emergency"]].groupby("bbl")["complaint_id"].nunique()
     own_v_cls = counts_by(v, bbls, hist, "class", ["A", "B", "C"], "v_class_")
     own_v_type = counts_by(v, bbls, hist, "problem_type", TARGET_TYPES, "v_")
     bb = inp["bedbugs"]
-    bb_last = bb[bb["year"] == target_year - 1].groupby("bbl")["has_infestation"].max()
-    bb_years = bb[bb["year"].isin(hist) & bb["has_infestation"]].groupby("bbl")["year"].nunique()
+    # Annual filings are publication-lagged; use the latest filing actually
+    # available at cutoff, even if its period ends before the six-month window.
+    bb = bb[bb["period_end"].ge(pd.Timestamp(config.STUDY_START_DATE))
+            & bb["period_end"].lt(pd.Timestamp(cutoff)) & bb["filing_date"].lt(pd.Timestamp(cutoff))]
+    latest_bb = bb.sort_values(["period_end", "filing_date"]).drop_duplicates("bbl", keep="last")
     ev = inp["evictions"]
-    ev_hist = ev[ev["year"].isin(hist)].groupby("bbl").size()
-
-    X = b.set_index("bbl").copy()
-    X = X.join(own_c).join(own_v_cls).join(own_v_type)
-    X["c_total"] = total_c.reindex(bbls).fillna(0).values
-    X["c_emergency"] = emerg.reindex(bbls).fillna(0).values
+    ev = ev[in_window(ev["executed_date"], start, cutoff)]
+    X = b.set_index("bbl").join(own_c).join(own_v_cls).join(own_v_type)
+    X["c_total"] = c.groupby("bbl")["complaint_id"].nunique().reindex(bbls).fillna(0).values
+    X["c_emergency"] = c[c["is_emergency"]].groupby("bbl")["complaint_id"].nunique().reindex(bbls).fillna(0).values
     X["c_total_per_unit"] = X["c_total"] / X["unitsres"]
-    X["bedbugs_last_year"] = bb_last.reindex(bbls).astype("boolean").fillna(False).astype(bool).values
-    X["bedbug_years"] = bb_years.reindex(bbls).fillna(0).values
-    X["evictions"] = ev_hist.reindex(bbls).fillna(0).values
+    X["bedbugs_recent_filing"] = latest_bb.set_index("bbl")["has_infestation"].reindex(bbls).astype("boolean").fillna(False).astype(bool).values
+    X["bedbug_filing_available"] = bbls.isin(latest_bb["bbl"])
+    X["bedbug_years"] = bb[bb["has_infestation"]].groupby("bbl")["year"].nunique().reindex(bbls).fillna(0).values
+    X["evictions"] = ev.groupby("bbl").size().reindex(bbls).fillna(0).values
     X["evictions_per_unit"] = X["evictions"] / X["unitsres"]
-
-    # Landlord record (other buildings only)
     ll = landlord_leave_one_out(own_c.reindex(bbls), X["unitsres"], X["landlord_id"])
     ll.index = bbls
     X = X.join(ll)
     X["has_portfolio"] = X["portfolio_buildings"] > 1
-
-    # 100 m neighborhood: other buildings' complaints, and how many buildings are around
     nb_counts = A @ own_c.reindex(bbls).to_numpy(dtype=float)
     for j, t in enumerate(TARGET_TYPES):
         X[f"nb100_{slug(t)}"] = nb_counts[:, j]
     X["nb100_buildings"] = np.asarray(A.sum(axis=1)).ravel()
-
-    # Reported crime within 200 m (per year over the history window)
     if inp.get("crime") is not None:
-        cc = crime_counts(b, inp["crime"], hist)
-        for col in cc.columns:
+        cr = inp["crime"][in_window(inp["crime"]["rpt_dt"], start, cutoff)]
+        # A missing source month is not a month with zero crime. Annualize
+        # over observed months and retain exposure metadata for the app.
+        months = cr["rpt_dt"].dt.to_period("M").drop_duplicates()
+        observed_days = sum((m.end_time.normalize() + pd.Timedelta(days=1) - m.start_time).days for m in months)
+        full_days = (pd.Timestamp(cutoff) - pd.Timestamp(start)).days
+        exposure = observed_days / 365.25
+        cc = crime_counts(b, cr, hist, exposure_years=exposure if exposure else 1)
+        if not observed_days:
+            cc[:] = np.nan
+        X["crime_exposure_fraction"] = observed_days / full_days
+        X["crime_observed_start"] = cr["rpt_dt"].min().strftime("%Y-%m-%d") if len(cr) else "unavailable"
+        X["crime_observed_end"] = cr["rpt_dt"].max().strftime("%Y-%m-%d") if len(cr) else "unavailable"
+        for col in cc:
             X[col] = cc[col].to_numpy()
-
-    # Targets
-    y = counts_by(c, bbls, [target_year], "problem_type", TARGET_TYPES, "y_", distinct="complaint_id")
-    X = X.join((y > 0).astype("int8"))
-    X["target_year"] = target_year
+    if window != "forecast":
+        target = inp["complaints"][in_window(inp["complaints"]["received_date"], cutoff, end)]
+        y = counts_by(target, bbls, [pd.Timestamp(cutoff).year], "problem_type", TARGET_TYPES, "y_", distinct="complaint_id")
+        X = X.join((y > 0).astype("int8"))
+    X["window"] = window
+    X["history_start"], X["history_end"] = start, cutoff
+    X["target_start"], X["target_end"] = cutoff, end
     return X.reset_index()
+
+
+def build_tables():
+    """Build the training and held-out feature files from cleaned inputs."""
+    inp = load_inputs()
+    universe = building_universe(inp["pluto"], inp["landlords"])
+    A = neighbor_matrix(universe)
+    config.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    for window in ("train", "test"):
+        frame = build_snapshot(window, inp, universe, A)
+        frame.to_parquet(str(FEATURES_FILE).format(window=window), index=False)
+    from src.study import metadata
+    import json
+    (config.PROCESSED_DIR / "study.json").write_text(json.dumps(metadata(), indent=2), encoding="utf-8")
 
 
 def feature_columns(df: pd.DataFrame) -> list[str]:
     """Model inputs: everything except ids, coordinates, targets and text labels."""
     drop = {"bbl", "landlord_id", "landlord_key_type", "zipcode", "latitude", "longitude", "bldgclass",
-            "yearbuilt", "target_year", "era", "borough"}
+            "yearbuilt", "target_year", "era", "borough", "window", "history_start", "history_end", "target_start", "target_end", "crime_observed_start", "crime_observed_end"}
     return [c for c in df.columns if c not in drop and not c.startswith("y_")]
 
 
 def target_columns() -> list[str]:
     return [f"y_{slug(t)}" for t in TARGET_TYPES]
+
+
+if __name__ == "__main__":
+    build_tables()

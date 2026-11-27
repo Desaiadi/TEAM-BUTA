@@ -20,7 +20,7 @@ from src import config
 
 def month_files(directory: Path = config.RAW_311_FULL_DIR) -> list[Path]:
     """Sorted list of the monthly parquet files (YYYY-MM.parquet)."""
-    files = sorted(directory.glob("*.parquet"))
+    files = sorted(f for f in directory.glob("*.parquet") if config.STUDY_START_DATE[:7] <= f.stem <= config.STUDY_END_DATE[:7])
     if not files:
         raise FileNotFoundError(f"No files in {directory}. Run `python -m src.download --only 311full`.")
     return files

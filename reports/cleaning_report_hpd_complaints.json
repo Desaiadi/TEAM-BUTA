@@ -3,49 +3,49 @@
   "steps": [
     {
       "step": "load_raw",
-      "rows_before": 4032908,
-      "rows_after": 4032908,
+      "rows_before": 1651542,
+      "rows_after": 1651542,
       "rows_removed": 0,
-      "detail": "2,448,291 complaints"
+      "detail": "1,001,726 complaints"
     },
     {
       "step": "drop_duplicate_problem_id",
-      "rows_before": 4032908,
-      "rows_after": 4032908,
+      "rows_before": 1651542,
+      "rows_after": 1651542,
       "rows_removed": 0,
       "detail": ""
     },
     {
       "step": "parse_dates",
-      "rows_before": 4032908,
-      "rows_after": 4032908,
+      "rows_before": 1651542,
+      "rows_after": 1651542,
       "rows_removed": 0,
-      "detail": "missing or pre-2022 received_date"
+      "detail": "missing or pre-2025 received_date"
     },
     {
       "step": "valid_bbl",
-      "rows_before": 4032908,
-      "rows_after": 4019416,
-      "rows_removed": 13492,
+      "rows_before": 1651542,
+      "rows_after": 1647250,
+      "rows_removed": 4292,
       "detail": "missing or invalid BBL"
     },
     {
       "step": "derive_fields",
-      "rows_before": 4019416,
-      "rows_after": 4019416,
+      "rows_before": 1647250,
+      "rows_after": 1647250,
       "rows_removed": 0,
       "detail": "problem_type, emergency, duplicate, building-wide, open flags",
       "problem_types": {
-        "heat/hot water": 1358045,
-        "other": 490539,
-        "leaks/mold": 415456,
-        "plumbing": 385863,
-        "pests": 360258,
-        "paint/plaster": 353184,
-        "doors/windows": 275608,
-        "electric": 164517,
-        "sanitation": 114010,
-        "safety": 101936
+        "heat/hot water": 561275,
+        "other": 205332,
+        "leaks/mold": 164934,
+        "plumbing": 164322,
+        "pests": 145578,
+        "paint/plaster": 140349,
+        "doors/windows": 110360,
+        "electric": 69166,
+        "sanitation": 46917,
+        "safety": 39017
       }
     }
   ]

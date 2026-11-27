@@ -3,46 +3,46 @@
   "steps": [
     {
       "step": "load_raw",
-      "rows_before": 4492764,
-      "rows_after": 4492764,
+      "rows_before": 1670801,
+      "rows_after": 1670801,
       "rows_removed": 0,
       "detail": ""
     },
     {
       "step": "drop_duplicate_violationid",
-      "rows_before": 4492764,
-      "rows_after": 4492764,
+      "rows_before": 1670801,
+      "rows_after": 1670801,
       "rows_removed": 0,
       "detail": ""
     },
     {
       "step": "parse_dates",
-      "rows_before": 4492764,
-      "rows_after": 4492764,
+      "rows_before": 1670801,
+      "rows_after": 1670801,
       "rows_removed": 0,
-      "detail": "missing or pre-2022 inspectiondate"
+      "detail": "missing or pre-2025 inspectiondate"
     },
     {
       "step": "valid_bbl",
-      "rows_before": 4492764,
-      "rows_after": 4488073,
-      "rows_removed": 4691,
+      "rows_before": 1670801,
+      "rows_after": 1669257,
+      "rows_removed": 1544,
       "detail": "missing or invalid BBL"
     },
     {
       "step": "valid_class",
-      "rows_before": 4488073,
-      "rows_after": 4488073,
+      "rows_before": 1669257,
+      "rows_after": 1669257,
       "rows_removed": 0,
       "detail": "class not in A/B/C/I"
     },
     {
       "step": "derive_fields",
-      "rows_before": 4488073,
-      "rows_after": 4488073,
+      "rows_before": 1669257,
+      "rows_after": 1669257,
       "rows_removed": 0,
       "detail": "topic via regex, problem_type, open/lead/rent-impairing flags",
-      "tagged_share": 0.9207
+      "tagged_share": 0.9116
     }
   ]
 }

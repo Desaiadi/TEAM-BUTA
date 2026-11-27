@@ -1,0 +1,276 @@
+[
+  {
+    "dataset": "pluto",
+    "steps": [
+      {
+        "step": "load_raw",
+        "rows_before": 858312,
+        "rows_after": 858312,
+        "rows_removed": 0,
+        "detail": ""
+      },
+      {
+        "step": "valid_unique_bbl",
+        "rows_before": 858312,
+        "rows_after": 858312,
+        "rows_removed": 0,
+        "detail": "invalid or duplicate BBL"
+      },
+      {
+        "step": "convert_types",
+        "rows_before": 858312,
+        "rows_after": 858312,
+        "rows_removed": 0,
+        "detail": "39,842 lots with yearbuilt=0 set to missing",
+        "unknown_yearbuilt": 39842
+      }
+    ]
+  },
+  {
+    "dataset": "hpd_complaints",
+    "steps": [
+      {
+        "step": "load_raw",
+        "rows_before": 1651542,
+        "rows_after": 1651542,
+        "rows_removed": 0,
+        "detail": "1,001,726 complaints"
+      },
+      {
+        "step": "drop_duplicate_problem_id",
+        "rows_before": 1651542,
+        "rows_after": 1651542,
+        "rows_removed": 0,
+        "detail": ""
+      },
+      {
+        "step": "parse_dates",
+        "rows_before": 1651542,
+        "rows_after": 1651542,
+        "rows_removed": 0,
+        "detail": "missing or pre-2025 received_date"
+      },
+      {
+        "step": "valid_bbl",
+        "rows_before": 1651542,
+        "rows_after": 1647250,
+        "rows_removed": 4292,
+        "detail": "missing or invalid BBL"
+      },
+      {
+        "step": "derive_fields",
+        "rows_before": 1647250,
+        "rows_after": 1647250,
+        "rows_removed": 0,
+        "detail": "problem_type, emergency, duplicate, building-wide, open flags",
+        "problem_types": {
+          "heat/hot water": 561275,
+          "other": 205332,
+          "leaks/mold": 164934,
+          "plumbing": 164322,
+          "pests": 145578,
+          "paint/plaster": 140349,
+          "doors/windows": 110360,
+          "electric": 69166,
+          "sanitation": 46917,
+          "safety": 39017
+        }
+      }
+    ]
+  },
+  {
+    "dataset": "hpd_violations",
+    "steps": [
+      {
+        "step": "load_raw",
+        "rows_before": 1670801,
+        "rows_after": 1670801,
+        "rows_removed": 0,
+        "detail": ""
+      },
+      {
+        "step": "drop_duplicate_violationid",
+        "rows_before": 1670801,
+        "rows_after": 1670801,
+        "rows_removed": 0,
+        "detail": ""
+      },
+      {
+        "step": "parse_dates",
+        "rows_before": 1670801,
+        "rows_after": 1670801,
+        "rows_removed": 0,
+        "detail": "missing or pre-2025 inspectiondate"
+      },
+      {
+        "step": "valid_bbl",
+        "rows_before": 1670801,
+        "rows_after": 1669257,
+        "rows_removed": 1544,
+        "detail": "missing or invalid BBL"
+      },
+      {
+        "step": "valid_class",
+        "rows_before": 1669257,
+        "rows_after": 1669257,
+        "rows_removed": 0,
+        "detail": "class not in A/B/C/I"
+      },
+      {
+        "step": "derive_fields",
+        "rows_before": 1669257,
+        "rows_after": 1669257,
+        "rows_removed": 0,
+        "detail": "topic via regex, problem_type, open/lead/rent-impairing flags",
+        "tagged_share": 0.9116
+      }
+    ]
+  },
+  {
+    "dataset": "bedbugs",
+    "steps": [
+      {
+        "step": "load_raw",
+        "rows_before": 118012,
+        "rows_after": 118012,
+        "rows_removed": 0,
+        "detail": ""
+      },
+      {
+        "step": "valid_bbl",
+        "rows_before": 118012,
+        "rows_after": 117867,
+        "rows_removed": 145,
+        "detail": "missing or invalid BBL"
+      },
+      {
+        "step": "drop_impossible",
+        "rows_before": 117867,
+        "rows_after": 117859,
+        "rows_removed": 8,
+        "detail": "infested > units, negative counts, no period or units"
+      },
+      {
+        "step": "one_filing_per_building_year",
+        "rows_before": 117859,
+        "rows_after": 103089,
+        "rows_removed": 14770,
+        "detail": ""
+      }
+    ]
+  },
+  {
+    "dataset": "evictions",
+    "steps": [
+      {
+        "step": "load_raw",
+        "rows_before": 34816,
+        "rows_after": 34816,
+        "rows_removed": 0,
+        "detail": ""
+      },
+      {
+        "step": "residential_only",
+        "rows_before": 34816,
+        "rows_after": 31905,
+        "rows_removed": 2911,
+        "detail": "commercial evictions removed"
+      },
+      {
+        "step": "parse_dates",
+        "rows_before": 31905,
+        "rows_after": 31905,
+        "rows_removed": 0,
+        "detail": "missing or pre-2025 executed_date"
+      },
+      {
+        "step": "valid_bbl",
+        "rows_before": 31905,
+        "rows_after": 29770,
+        "rows_removed": 2135,
+        "detail": "missing or invalid BBL"
+      },
+      {
+        "step": "drop_duplicates",
+        "rows_before": 29770,
+        "rows_after": 29762,
+        "rows_removed": 8,
+        "detail": "same case, docket, building and date"
+      }
+    ]
+  },
+  {
+    "dataset": "landlords",
+    "steps": [
+      {
+        "step": "load_raw",
+        "rows_before": 187127,
+        "rows_after": 187127,
+        "rows_removed": 0,
+        "detail": "744,753 contacts"
+      },
+      {
+        "step": "latest_registration_per_bbl",
+        "rows_before": 187127,
+        "rows_after": 176715,
+        "rows_removed": 10412,
+        "detail": "older registrations of the same building"
+      },
+      {
+        "step": "build_portfolios",
+        "rows_before": 176715,
+        "rows_after": 173329,
+        "rows_removed": 3386,
+        "detail": "116,519 landlords",
+        "largest_portfolio": 522
+      }
+    ]
+  },
+  {
+    "dataset": "crime",
+    "steps": [
+      {
+        "step": "load_raw",
+        "rows_before": 1006599,
+        "rows_after": 1006599,
+        "rows_removed": 0,
+        "detail": "historic + current year"
+      },
+      {
+        "step": "drop_duplicate_cmplnt_num",
+        "rows_before": 1006599,
+        "rows_after": 1006599,
+        "rows_removed": 0,
+        "detail": ""
+      },
+      {
+        "step": "parse_dates",
+        "rows_before": 1006599,
+        "rows_after": 1006599,
+        "rows_removed": 0,
+        "detail": "missing or pre-2025 rpt_dt"
+      },
+      {
+        "step": "valid_coordinates",
+        "rows_before": 1006599,
+        "rows_after": 1006594,
+        "rows_removed": 5,
+        "detail": "missing, zero or outside-NYC coordinates"
+      },
+      {
+        "step": "derive_fields",
+        "rows_before": 1006594,
+        "rows_after": 1006594,
+        "rows_removed": 0,
+        "detail": "severity, crime group (regex), in-residence flag",
+        "groups": {
+          "property": 427834,
+          "violent": 207133,
+          "harassment": 182345,
+          "other": 139799,
+          "drugs/weapons": 49483
+        }
+      }
+    ]
+  }
+]

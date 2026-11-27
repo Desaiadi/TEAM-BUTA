@@ -1,0 +1,29 @@
+{
+  "target": "Recorded agency closure time; not verified physical resolution",
+  "study_id": "2025-01_2026-10",
+  "cap_hours": 2160,
+  "train_rows": 266356,
+  "test_rows": 226078,
+  "train_start": "2025-01",
+  "train_end": "2025-09",
+  "test_start": "2026-01",
+  "test_end": "2026-07",
+  "audit": {
+    "raw_rows": 684160,
+    "outside_study_rows": 0,
+    "duplicates_removed": 0,
+    "invalid_rows": 151,
+    "insufficient_followup_rows": 94791,
+    "usable_rows": 589218,
+    "as_of": "2026-10-31T23:59:59.999999-04:00"
+  },
+  "default_model": "gradient_boosting",
+  "models": [
+    "linear_regression",
+    "decision_tree",
+    "random_forest",
+    "gradient_boosting"
+  ],
+  "target_transform": "log1p; linear/tree/forest use squared error, boosting uses absolute error",
+  "sample": "5th, 15th and 25th of each study month; local input may differ"
+}

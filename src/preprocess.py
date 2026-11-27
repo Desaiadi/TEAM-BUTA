@@ -203,7 +203,7 @@ def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
     df["day_of_week"] = ts.dt.day_of_week.astype("int8")
     df["hour"] = ts.dt.hour.astype("int8")
     df["is_heat_season"] = df["month"].isin(config.HEAT_SEASON_MONTHS)
-    # Heat season label: Oct 2023 – May 2024 -> "2023-24"
+    # Heat season label: Oct 2025 – May 2026 -> "2025-26"
     season_start = np.where(df["month"] >= 10, df["year"], df["year"] - 1)
     df["heat_season"] = pd.Series(season_start, index=df.index).astype(str) + "-" + \
         pd.Series((season_start + 1) % 100, index=df.index).astype(str).str.zfill(2)

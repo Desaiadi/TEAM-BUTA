@@ -37,7 +37,7 @@ def neighbor_pairs(universe: pd.DataFrame, A: sparse.csr_matrix) -> pd.DataFrame
 
 
 def building_rates(snapshot: pd.DataFrame) -> pd.DataFrame:
-    """Per building: complaints per 100 apartments (history window) overall and by type, plus next-year flags."""
+    """Per building: complaints per 100 apartments (history window) overall and by type, plus four-month outcome flags."""
     s = snapshot.reset_index(drop=True)
     out = pd.DataFrame({"all problems": s["c_total"] / s["unitsres"] * 100})
     for t in TARGET_TYPES:
@@ -60,8 +60,7 @@ def at_least_one_problem(pairs: pd.DataFrame, rates: pd.DataFrame) -> pd.Series:
     """True for pairs where at least one building reported a problem.
 
     Two problem-free buildings always look "alike" and say nothing about the
-    landlord; they make up ~49% of different-landlord pairs but only ~31% of
-    same-landlord pairs, which would bias a naive comparison.
+    landlord; their frequency differs by landlord group and can bias a naive comparison.
     """
     has = (rates["all problems"] > 0).to_numpy()
     return pd.Series(has[pairs["i"].to_numpy()] | has[pairs["j"].to_numpy()], index=pairs.index)
@@ -87,7 +86,7 @@ def compare(pairs: pd.DataFrame, gaps: pd.DataFrame, mask: pd.Series, n_boot: in
 
 
 def outcome_agreement(pairs: pd.DataFrame, snapshot: pd.DataFrame, mask: pd.Series) -> pd.DataFrame:
-    """Next-year check: when one building in a pair gets a problem, how often does its neighbor too?"""
+    """Four-month outcome check: when one building in a pair gets a problem, how often does its neighbor too?"""
     s = snapshot.reset_index(drop=True)
     p = pairs[mask]
     rows = []

@@ -7,6 +7,22 @@ here and re-run; cached downloads that already exist are reused.
 
 from pathlib import Path
 
+# Shared event cohort. End bounds below are exclusive to include all of October.
+STUDY_START_DATE = "2025-01-01"
+STUDY_END_DATE = "2026-10-31"
+STUDY_END_EXCLUSIVE = "2026-11-01"
+STUDY_AS_OF = "2026-10-31T23:59:59.999999-04:00"
+STUDY_ID = f"{STUDY_START_DATE[:7]}_{STUDY_END_DATE[:7]}"
+RESOLUTION_TRAIN_START, RESOLUTION_TRAIN_END = "2025-01", "2025-09"
+RESOLUTION_TEST_START, RESOLUTION_TEST_END = "2026-01", "2026-07"
+HOUSING_HISTORY_MONTHS = 6
+HOUSING_TARGET_MONTHS = 4
+HOUSING_WINDOWS = {
+    "train": ("2025-01-01", "2025-07-01", "2025-11-01"),
+    "test": ("2026-01-01", "2026-07-01", "2026-11-01"),
+    "forecast": ("2026-05-01", "2026-11-01", "2027-03-01"),
+}
+
 # --------------------------------------------------------------------------
 # Paths
 # --------------------------------------------------------------------------
@@ -17,7 +33,7 @@ RAW_311_DIR = RAW_DIR / "311"            # one parquet file per (type, month) �
 RAW_311_FULL_DIR = RAW_DIR / "311_full"  # one parquet file per month – every row and column
 INTERIM_DIR = DATA_DIR / "interim"
 STUDY_SUBSET_FILE = INTERIM_DIR / "311_study_subset.parquet"   # written by src.transform.save_subset
-FULL_START_DATE = "2020-01-01"           # first month of the full 311 dataset
+FULL_START_DATE = STUDY_START_DATE
 PROCESSED_DIR = DATA_DIR / "processed"
 REPORTS_DIR = PROJECT_ROOT / "reports"
 
@@ -30,8 +46,8 @@ CLEANING_REPORT_FILE = REPORTS_DIR / "cleaning_report.json"
 # --------------------------------------------------------------------------
 # 311 scope (311 helpers in src/transform.py and src/preprocess.py)
 # --------------------------------------------------------------------------
-START_DATE = "2023-01-01"
-END_DATE = "2025-12-31"   # inclusive
+START_DATE = STUDY_START_DATE
+END_DATE = STUDY_END_DATE
 
 # Default 311 complaint types the 311 helpers extract; set these for the
 # city response-time analysis.
@@ -81,7 +97,7 @@ PLUTO_URL = "https://data.cityofnewyork.us/resource/64uk-42ks.csv"
 # --------------------------------------------------------------------------
 # Housing datasets (all NYC Open Data, linked by BBL)
 # --------------------------------------------------------------------------
-HOUSING_START_DATE = "2022-01-01"   # dated datasets are downloaded from here to today
+HOUSING_START_DATE = STUDY_START_DATE
 
 CRIME_COLUMNS = [   # NYPD complaints; demographic columns are deliberately not downloaded
     "cmplnt_num", "cmplnt_fr_dt", "rpt_dt", "ky_cd", "ofns_desc", "law_cat_cd", "crm_atpt_cptd_cd",
@@ -103,7 +119,7 @@ HOUSING_DATASETS = {
     "hpd_contacts": ("feu5-w2e2", None, None),
     "bedbugs": ("wz6d-d3jb", None, None),
     "evictions": ("6z8x-wfk4", None, None),
-    "crime_historic": ("qgea-i56i", CRIME_COLUMNS, "rpt_dt"),             # NYPD reported crimes, 2006 → last year
+    "crime_historic": ("qgea-i56i", CRIME_COLUMNS, "rpt_dt", STUDY_START_DATE, "2025-12-31"),
     "crime_current": ("5uac-w243", CRIME_COLUMNS, "rpt_dt", "2026-01-01"),   # current year only
 }
 

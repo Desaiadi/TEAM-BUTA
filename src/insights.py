@@ -9,7 +9,7 @@ Writes two files the Flask app reads at startup:
   app_building_history.parquet   per building, per year: complaints by problem type
                            and violations by class (the building page's history chart)
 
-Model evaluation is redone here the honest way (train on 2024, test on 2025),
+Model evaluation is redone here the honest way (train on Jul–Oct 2025 outcomes, test on Jul–Oct 2026),
 so every number on the Insights page matches the notebooks.
 """
 
@@ -47,6 +47,8 @@ def dataset_table() -> list[dict]:
     """Rows downloaded and rows kept after cleaning, per dataset (parquet metadata only)."""
     def rows(path):
         files = sorted(path.glob("*.parquet")) if path.is_dir() else [path]
+        if path.is_dir():
+            files = [f for f in files if config.STUDY_START_DATE[:7] <= f.stem[:7] <= config.STUDY_END_DATE[:7]]
         return sum(pq.ParquetFile(f).metadata.num_rows for f in files if f.exists())
 
     raw = config.RAW_DIR
@@ -56,9 +58,9 @@ def dataset_table() -> list[dict]:
         ("HPD registrations", raw / "hpd_registrations.parquet", OUT["landlords"], "Owners and agents → landlords"),
         ("PLUTO tax lots", raw / "pluto.parquet", config.CLEAN_PLUTO_FILE, "Building age, size, location"),
         ("Bedbug filings", raw / "bedbugs.parquet", OUT["bedbugs"], "Infested apartments per year"),
-        ("Evictions", raw / "evictions.parquet", OUT["evictions"], "Residential evictions since 2022"),
-        ("NYPD complaints", raw / "crime_historic", OUT["crime"], "Reported crime (2022 onward)"),
-        ("311 service requests", raw / "311_full", None, "Full history, profiled"),
+        ("Evictions", raw / "evictions.parquet", OUT["evictions"], "Residential evictions in the study window"),
+        ("NYPD complaints", raw / "crime_historic", OUT["crime"], "Reported crime in the study window"),
+        ("311 service requests", raw / "resolution_311", None, "Selected days, Jan 2025–Oct 2026"),
     ]
     out = []
     for name, r, c, what in spec:
@@ -74,10 +76,11 @@ def trends() -> dict:
     c["month"] = c["received_date"].dt.to_period("M").astype(str)
     monthly = c.groupby(["month", "problem_type"])["complaint_id"].nunique().unstack(fill_value=0)
     monthly = monthly.reindex(columns=F.TARGET_TYPES, fill_value=0)
-    current = pd.Timestamp.today().to_period("M").strftime("%Y-%m")
+    current = config.STUDY_END_EXCLUSIVE[:7]
     monthly = monthly[monthly.index < current]                   # drop the unfinished month
 
-    v = pd.read_parquet(OUT["hpd_violations"], columns=["year", "class"])
+    v = pd.read_parquet(OUT["hpd_violations"], columns=["inspectiondate", "year", "class"])
+    v = v[v["inspectiondate"].dt.month <= 10]  # Compare Jan–Oct in both years.
     v_year = pd.crosstab(v["year"], v["class"]).reindex(columns=["A", "B", "C"], fill_value=0)
 
     cr = pd.read_parquet(OUT["crime"], columns=["rpt_dt", "crime_group"])
@@ -89,7 +92,7 @@ def trends() -> dict:
     ev_m = ev[ev["month"] < current].groupby("month").size()
 
     bb = pd.read_parquet(OUT["bedbugs"], columns=["year", "has_infestation"])
-    bb_y = bb[bb["year"] >= 2018].groupby("year")["has_infestation"].mean()
+    bb_y = bb[bb["year"].isin([2025, 2026])].groupby("year")["has_infestation"].mean()
     return {
         "complaints_monthly": {"months": list(monthly.index),
                                "series": {t: monthly[t].astype(int).tolist() for t in F.TARGET_TYPES}},
@@ -102,7 +105,7 @@ def trends() -> dict:
 
 
 # --------------------------------------------------------------------------
-# Findings (Q1-Q4), from the 2024 table (history 2022-23 → outcomes 2024)
+# Findings (Q1-Q4), from Jan–Jun 2025 history → Jul–Oct 2025 outcomes
 # --------------------------------------------------------------------------
 def findings(train: pd.DataFrame, test: pd.DataFrame, universe: pd.DataFrame, A) -> dict:
     q1, q2, q4 = [], [], []
@@ -133,7 +136,7 @@ def findings(train: pd.DataFrame, test: pd.DataFrame, universe: pd.DataFrame, A)
 
 
 # --------------------------------------------------------------------------
-# Model evaluation (Q5): train 2024, test 2025
+# Model evaluation (Q5): train 2025, test 2026
 # --------------------------------------------------------------------------
 def model_evaluation(train: pd.DataFrame, test: pd.DataFrame) -> dict:
     cols = F.feature_columns(train)
@@ -154,7 +157,7 @@ def model_evaluation(train: pd.DataFrame, test: pd.DataFrame) -> dict:
         dec = pd.qcut(p, 10, duplicates="drop")
         cal = pd.DataFrame({"pred": p, "obs": y_te.to_numpy()}).groupby(dec, observed=True).mean()
         calib[t] = {"pred": [_round(x) for x in cal["pred"]], "obs": [_round(x) for x in cal["obs"]]}
-        lv = pd.Series(M.risk_level(p, y_te.mean()), index=test.index)
+        lv = pd.Series(M.risk_level(p, y_tr.mean()), index=test.index)
         obs = test.groupby(lv)[f"y_{s}"].mean()
         levels.append({"type": t, **{k: _round(obs.get(k)) for k in ["Low", "Medium", "High"]}})
         log.info("evaluated %s", t)
@@ -174,12 +177,14 @@ def model_evaluation(train: pd.DataFrame, test: pd.DataFrame) -> dict:
 # --------------------------------------------------------------------------
 def building_history(bbls: pd.Index) -> pd.DataFrame:
     """Long table: bbl, year, series (problem type or 'violations A/B/C'), n."""
-    c = pd.read_parquet(OUT["hpd_complaints"], columns=["complaint_id", "bbl", "year", "problem_type"])
+    c = pd.read_parquet(OUT["hpd_complaints"], columns=["complaint_id", "bbl", "received_date", "year", "problem_type"])
     c = c[c["bbl"].isin(bbls) & c["problem_type"].isin(F.TARGET_TYPES)]
+    c = c[c["received_date"].dt.month <= 10]
     hc = c.groupby(["bbl", "year", "problem_type"])["complaint_id"].nunique().rename("n").reset_index()
     hc = hc.rename(columns={"problem_type": "series"})
-    v = pd.read_parquet(OUT["hpd_violations"], columns=["bbl", "year", "class"])
+    v = pd.read_parquet(OUT["hpd_violations"], columns=["bbl", "inspectiondate", "year", "class"])
     v = v[v["bbl"].isin(bbls) & v["class"].isin(["A", "B", "C"])]
+    v = v[v["inspectiondate"].dt.month <= 10]
     hv = v.groupby(["bbl", "year", "class"]).size().rename("n").reset_index()
     hv["series"] = "class " + hv["class"]
     out = pd.concat([hc, hv.drop(columns="class")], ignore_index=True)
@@ -192,9 +197,11 @@ def build() -> None:
     inp = F.load_inputs()
     universe = F.building_universe(inp["pluto"], inp["landlords"])
     A = F.neighbor_matrix(universe)
-    train = pd.read_parquet(str(F.FEATURES_FILE).format(year=2024))
-    test = pd.read_parquet(str(F.FEATURES_FILE).format(year=2025))
-    insights = {"datasets": dataset_table(), "trends": trends(),
+    train = pd.read_parquet(str(F.FEATURES_FILE).format(window="train"))
+    test = pd.read_parquet(str(F.FEATURES_FILE).format(window="test"))
+    from src.study import metadata
+    from src.study import write_coverage
+    insights = {"study": metadata(), "coverage": write_coverage(), "datasets": dataset_table(), "trends": trends(),
                 "findings": findings(train, test, universe, A), "model": model_evaluation(train, test),
                 "built": pd.Timestamp.today().strftime("%Y-%m-%d")}
     INSIGHTS_FILE.write_text(json.dumps(insights))

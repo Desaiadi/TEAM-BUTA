@@ -6,3 +6,5 @@ __pycache__/
 data/
 models/
 private/
+reports/resolution/holdout_predictions.parquet
+reports/resolution/model_predictions.parquet

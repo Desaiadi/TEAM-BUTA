@@ -143,16 +143,16 @@ def _download_311_full_month(month: pd.Timestamp, force: bool) -> tuple[str, int
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     df.to_parquet(tmp, index=False, compression="zstd")
-    tmp.rename(path)   # only a complete month ever gets the final name
+    tmp.replace(path)   # atomically refresh existing caches on Windows too
     return f"{month:%Y-%m}", len(df)
 
 
 def download_311_full(force: bool = False) -> None:
-    """Download the complete 311 table (2020 to the current month), one file per month.
+    """Download the complete 311 table (January 2025 to October 2026), one file per month.
 
     The current, still-growing month is always re-downloaded so it stays fresh.
     """
-    months = _month_starts(config.FULL_START_DATE, pd.Timestamp.today().normalize())
+    months = _month_starts(config.FULL_START_DATE, config.STUDY_END_DATE)
     current = pd.Timestamp.today().normalize().replace(day=1)
     log.info("311 full: %d months", len(months))
     total = 0
@@ -173,7 +173,7 @@ def _write_parquet_atomic(df: pd.DataFrame, path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     df.to_parquet(tmp, index=False, compression="zstd")
-    tmp.rename(path)
+    tmp.replace(path)
 
 
 def _download_dataset_month(name: str, month: pd.Timestamp, force: bool) -> tuple[str, int]:
@@ -194,7 +194,7 @@ def download_housing(force: bool = False, only: list[str] | None = None) -> None
     """Download the housing datasets used by Know Before You Rent.
 
     Dated datasets (HPD complaints, violations) are fetched month by month from
-    HOUSING_START_DATE to today into data/raw/<name>/YYYY-MM.parquet; the
+    HOUSING_START_DATE to STUDY_END_DATE into data/raw/<name>/YYYY-MM.parquet; the
     current month is always refreshed. Undated ones (registrations, contacts,
     bedbugs, evictions) are fetched whole into data/raw/<name>.parquet.
     """
@@ -204,9 +204,10 @@ def download_housing(force: bool = False, only: list[str] | None = None) -> None
     for name in names:
         spec = config.HOUSING_DATASETS[name]
         dataset_id, columns, date_col = spec[:3]
-        start = spec[3] if len(spec) > 3 else config.HOUSING_START_DATE
+        start = max(spec[3] if len(spec) > 3 else config.HOUSING_START_DATE, config.STUDY_START_DATE)
+        end = min(spec[4] if len(spec) > 4 else config.STUDY_END_DATE, config.STUDY_END_DATE)
         if date_col:
-            jobs += [(name, m) for m in _month_starts(start, pd.Timestamp.today().normalize())]
+            jobs += [(name, m) for m in _month_starts(start, end)]
             continue
         path = config.RAW_DIR / f"{name}.parquet"
         if path.exists() and not force:
